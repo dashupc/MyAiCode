@@ -14,7 +14,7 @@ class MultiFormatExtractorApp:
     def __init__(self, root):
         self.root = root
         self.root.title("多格式文件内容提取工具 | V0.1")
-        self.root.geometry("800x600")
+        self.root.geometry("800x650")
         self.root.resizable(True, True)
         
         # 设置中文字体支持
@@ -22,8 +22,9 @@ class MultiFormatExtractorApp:
         self.style.configure("TLabel", font=("SimHei", 10))
         self.style.configure("TButton", font=("SimHei", 10))
         self.style.configure("TEntry", font=("SimHei", 10))
-        # 定义加大按钮的样式
+        # 定义按钮样式
         self.style.configure("Large.TButton", font=("SimHei", 12, "bold"), padding=10)
+        self.style.configure("Danger.TButton", font=("SimHei", 11, "bold"), padding=8, foreground="#D9534F")
         
         # 创建主框架并居中
         self.main_frame = ttk.Frame(root, padding="30")
@@ -84,14 +85,27 @@ class MultiFormatExtractorApp:
         scrollbar.grid(row=4, column=3, sticky=tk.NS)
         self.status_text.config(yscrollcommand=scrollbar.set, state=tk.DISABLED)
         
+        # 按钮区域
+        button_frame = ttk.Frame(self.main_frame)
+        button_frame.grid(row=5, column=0, columnspan=3, pady=15)
+        
         # 处理按钮 - 加大尺寸
         process_btn = ttk.Button(
-            self.main_frame, 
+            button_frame, 
             text="开始批量提取", 
             command=self.process_files, 
             style="Large.TButton"
         )
-        process_btn.grid(row=5, column=0, columnspan=3, pady=20)
+        process_btn.pack(side=tk.LEFT, padx=10)
+        
+        # 删除空文件按钮
+        delete_empty_btn = ttk.Button(
+            button_frame, 
+            text="删除空文件", 
+            command=self.delete_empty_files, 
+            style="Danger.TButton"
+        )
+        delete_empty_btn.pack(side=tk.LEFT, padx=10)
         
         # 配置网格权重，使界面可缩放
         self.main_frame.columnconfigure(1, weight=1)
@@ -106,6 +120,7 @@ class MultiFormatExtractorApp:
         dir_path = filedialog.askdirectory(title="选择包含文件的文件夹")
         if dir_path:
             self.input_dir.set(dir_path)
+            self.log(f"已选择文件夹: {dir_path}")
     
     def log(self, message):
         """在状态区域显示消息"""
@@ -369,6 +384,61 @@ class MultiFormatExtractorApp:
         # 处理完成
         self.log(f"\n处理完成！成功: {success_count} 个, 失败: {error_count} 个")
         messagebox.showinfo("完成", f"批量处理完成！\n成功: {success_count} 个文件\n失败: {error_count} 个文件\n结果保存至: {output_dir}")
+    
+    def delete_empty_files(self):
+        """删除所选文件夹中的空文件"""
+        input_dir = self.input_dir.get()
+        
+        # 验证输入
+        if not input_dir:
+            messagebox.showerror("错误", "请先选择文件夹")
+            return
+        
+        if not os.path.exists(input_dir):
+            messagebox.showerror("错误", "所选文件夹不存在")
+            return
+        
+        # 确认删除操作
+        confirm = messagebox.askyesno(
+            "确认删除", 
+            f"确定要删除 '{input_dir}' 中的所有空文件吗？\n此操作不可撤销！",
+            icon=messagebox.WARNING
+        )
+        
+        if not confirm:
+            return
+        
+        self.log(f"开始扫描并删除空文件: {input_dir}")
+        deleted_count = 0
+        skipped_count = 0
+        
+        # 扫描并删除空文件
+        for filename in os.listdir(input_dir):
+            file_path = os.path.join(input_dir, filename)
+            
+            # 只处理文件，不处理文件夹
+            if os.path.isfile(file_path):
+                try:
+                    # 检查文件大小是否为0
+                    if os.path.getsize(file_path) == 0:
+                        os.remove(file_path)
+                        self.log(f"已删除空文件: {filename}")
+                        deleted_count += 1
+                    else:
+                        skipped_count += 1
+                except Exception as e:
+                    self.log(f"处理 {filename} 时出错: {str(e)}")
+                    skipped_count += 1
+        
+        # 完成删除操作
+        self.log(f"\n空文件处理完成！")
+        self.log(f"已删除: {deleted_count} 个空文件")
+        self.log(f"未删除: {skipped_count} 个非空文件或文件夹")
+        
+        messagebox.showinfo(
+            "完成", 
+            f"空文件处理完成！\n已删除: {deleted_count} 个空文件\n未删除: {skipped_count} 个非空文件或文件夹"
+        )
 
 if __name__ == "__main__":
     # 创建自定义按钮样式
