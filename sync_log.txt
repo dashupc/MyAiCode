@@ -1,0 +1,37 @@
+2025-09-19 15:09:47,968 - INFO - 开始监控文件夹: D:/源文件夹
+2025-09-19 15:09:47,975 - INFO - 开始监控文件夹变化
+2025-09-19 15:09:58,434 - INFO - 同步文件: D:/源文件夹\新建 文本文档.txt -> I:/目标\新建 文本文档.txt
+2025-09-19 15:10:01,769 - INFO - 手动同步完成
+2025-09-19 15:11:49,771 - INFO - 已停止监控文件夹变化
+2025-09-19 15:12:28,958 - INFO - 已停止监控文件夹变化
+2025-09-19 15:12:28,961 - ERROR - An error occurred when calling message handler
+Traceback (most recent call last):
+  File "D:\MyAiCode\.venv\lib\site-packages\pystray\_win32.py", line 412, in _dispatcher
+    return int(icon._message_handlers.get(
+  File "D:\MyAiCode\.venv\lib\site-packages\pystray\_win32.py", line 224, in _on_notify
+    descriptors[index - 1](self)
+  File "D:\MyAiCode\.venv\lib\site-packages\pystray\_base.py", line 328, in inner
+    callback(self)
+  File "D:\MyAiCode\.venv\lib\site-packages\pystray\_base.py", line 453, in __call__
+    return self._action(icon, self)
+  File "d:\MyAiCode\folder_sync\folder_sync.py", line 531, in exit_app
+    sys.exit(0)
+SystemExit: 0
+2025-09-19 15:20:09,886 - INFO - 已停止监控文件夹变化
+2025-09-19 15:55:09,236 - INFO - 已停止监控文件夹变化
+2025-09-19 15:55:30,546 - INFO - 开始监控文件夹: D:/源文件夹
+2025-09-19 15:55:30,547 - INFO - 开始监控文件夹变化
+2025-09-19 15:55:33,340 - INFO - 手动同步完成
+2025-09-19 15:55:53,400 - INFO - 同步文件夹: D:/源文件夹\新建文件夹 -> I:/目标\新建文件夹
+2025-09-19 15:56:14,363 - INFO - 已停止监控文件夹变化
+2025-09-19 16:12:36,043 - INFO - 日志系统初始化完成
+2025-09-19 16:12:36,585 - ERROR - 检查启动项失败: [WinError 2] 系统找不到指定的文件。
+2025-09-19 16:12:36,590 - ERROR - 创建UI组件出错: expected integer but got "i"
+2025-09-19 16:12:38,980 - INFO - 应用程序初始化完成
+2025-09-19 16:14:14,637 - INFO - 日志系统初始化完成
+2025-09-19 16:14:15,142 - ERROR - 检查启动项失败: [WinError 2] 系统找不到指定的文件。
+2025-09-19 16:14:15,157 - ERROR - 创建UI组件出错: expected integer but got "i"
+2025-09-19 16:14:54,270 - INFO - 应用程序初始化完成
+2025-09-19 16:14:56,171 - INFO - 开始监控文件夹: D:/源文件夹
+2025-09-19 16:14:56,173 - ERROR - 启动监控出错: 'FolderSyncApp' object has no attribute 'status_var'
+2025-09-19 16:19:05,070 - ERROR - 停止监控出错: 'FolderSyncApp' object has no attribute 'status_var'
