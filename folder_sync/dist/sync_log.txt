@@ -1,0 +1,21 @@
+2025-09-19 15:14:02,054 - INFO - 开始监控文件夹: D:/源文件夹
+2025-09-19 15:14:02,055 - INFO - 开始监控文件夹变化
+2025-09-19 15:14:05,025 - INFO - 手动同步完成
+2025-09-19 15:14:26,384 - ERROR - 同步文件时出错: [Errno 13] Permission denied: 'D:/源文件夹\\新建 文本文档 - 副本.txt'
+2025-09-19 15:14:26,387 - INFO - 同步文件: D:/源文件夹\新建 文本文档 - 副本.txt -> I:/目标\新建 文本文档 - 副本.txt
+2025-09-19 15:14:28,899 - INFO - 同步文件: D:/源文件夹\新建 文本文档 - 副本 (2).txt -> I:/目标\新建 文本文档 - 副本 (2).txt
+2025-09-19 15:14:28,901 - INFO - 同步文件: D:/源文件夹\新建 文本文档 - 副本 (2).txt -> I:/目标\新建 文本文档 - 副本 (2).txt
+2025-09-19 15:19:45,495 - INFO - 已停止监控文件夹变化
+2025-09-19 15:19:45,498 - ERROR - An error occurred when calling message handler
+Traceback (most recent call last):
+  File "pystray\_win32.py", line 412, in _dispatcher
+  File "pystray\_win32.py", line 224, in _on_notify
+  File "pystray\_base.py", line 328, in inner
+  File "pystray\_base.py", line 453, in __call__
+  File "folder_sync.py", line 531, in exit_app
+SystemExit: 0
+2025-09-19 15:24:31,719 - INFO - 已停止监控文件夹变化
+2025-09-19 15:29:55,253 - INFO - 已停止监控文件夹变化
+2025-09-19 15:29:57,155 - INFO - 已停止监控文件夹变化
+2025-09-19 16:08:15,163 - INFO - 已停止监控文件夹变化
+2025-09-19 16:08:16,829 - INFO - 已停止监控文件夹变化
