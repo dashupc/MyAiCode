@@ -2,7 +2,7 @@
 
 
 a = Analysis(
-    ['auto_backup_v3.py'],
+    ['auto_backup_with_license.py'],
     pathex=[],
     binaries=[],
     datas=[],

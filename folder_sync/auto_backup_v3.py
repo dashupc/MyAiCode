@@ -23,10 +23,16 @@ class BackupTool:
         # 窗口居中显示
         self.center_window()
         
+        # 初始化日志文本组件的占位符
+        self.log_text = None
+        
         # 配置文件路径
         self.config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "backup_config.ini")
         if getattr(sys, 'frozen', False):
             self.config_path = os.path.join(os.path.dirname(sys.executable), "backup_config.ini")
+        
+        # 确定图标文件路径 - 优先从嵌入资源读取
+        self.icon_path = self.get_embedded_icon_path()
         
         # 加载配置
         self.load_config()
@@ -57,11 +63,14 @@ class BackupTool:
         self.file_hashes = {}  # 存储文件哈希值，用于检测变化
         self.tray_icon = None  # 系统托盘图标
         
-        # 创建UI
+        # 创建UI（先于设置图标，确保日志组件已初始化）
         self.create_widgets()
         
-        # 检查是否在启动项中
-        self.check_startup_status()
+        # 设置窗口图标
+        self.set_window_icon()
+        
+        # 检查是否在启动项中并更新按钮状态
+        self.update_startup_button()
         
         # 重写窗口关闭事件
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
@@ -69,6 +78,40 @@ class BackupTool:
         # 初始化完成后处理
         self.post_init()
     
+    def get_embedded_icon_path(self):
+        """获取嵌入到EXE中的图标路径"""
+        try:
+            if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+                # 从PyInstaller的临时目录获取图标（打包时嵌入）
+                icon_path = os.path.join(sys._MEIPASS, "backup.ico")
+                if os.path.exists(icon_path):
+                    return icon_path
+            
+            # 如果不是打包环境或未找到，检查常规位置
+            current_dir = os.path.dirname(os.path.abspath(__file__)) if not getattr(sys, 'frozen', False) else os.path.dirname(sys.executable)
+            icon_path = os.path.join(current_dir, "backup.ico")
+            if os.path.exists(icon_path):
+                return icon_path
+                
+            # 所有位置都找不到
+            return None
+            
+        except Exception as e:
+            print(f"获取图标路径时出错: {str(e)}")
+            return None
+    
+    def set_window_icon(self):
+        """设置窗口标题栏图标为backup.ico"""
+        if self.icon_path and os.path.exists(self.icon_path):
+            try:
+                self.root.iconbitmap(self.icon_path)
+                self.log(f"已加载窗口图标: {os.path.basename(self.icon_path)}")
+            except Exception as e:
+                self.log(f"设置窗口图标失败: {str(e)}")
+        else:
+            self.log(f"未找到图标文件，使用默认图标")
+    
+    # 其他方法保持不变...
     def post_init(self):
         """初始化完成后的操作"""
         # 如果是开机启动或命令行指定最小化，则隐藏窗口到托盘
@@ -103,7 +146,7 @@ class BackupTool:
         """无提示启动监控（用于自动启动）"""
         try:
             self.monitoring = True
-            self.monitor_btn.config(text="停止监控")
+            self.update_monitor_button_text()
             self.calculate_initial_hashes()
             self.log(f"自动开始监控，间隔 {self.monitor_interval.get()} 秒")
             
@@ -155,7 +198,8 @@ class BackupTool:
         self.monitor_btn = ttk.Button(button_frame, text="开始监控", command=self.toggle_monitoring)
         self.monitor_btn.pack(side=tk.LEFT, padx=5)
         
-        self.startup_btn = ttk.Button(button_frame, text="添加到开机启动", command=self.toggle_startup)
+        # 开机启动按钮 - 将根据状态动态变化
+        self.startup_btn = ttk.Button(button_frame, text="添加开机启动", command=self.toggle_startup)
         self.startup_btn.pack(side=tk.LEFT, padx=5)
         
         self.save_btn = ttk.Button(button_frame, text="保存配置", command=self.save_config)
@@ -190,16 +234,29 @@ class BackupTool:
         footer_frame = ttk.Frame(main_frame)
         footer_frame.grid(row=8, column=0, columnspan=3, pady=10, sticky="nsew")
         
-        # 为页脚设置权重，使其居中
-        main_frame.rowconfigure(8, weight=0)
-        main_frame.columnconfigure(1, weight=1)
-        
         ttk.Label(footer_frame, text="QQ: 88179096", style="Footer.TLabel").pack(side=tk.LEFT, padx=10)
         ttk.Label(footer_frame, text="网址: www.itvip.com.cn", style="Footer.TLabel").pack(side=tk.LEFT, padx=10)
         
-        # 设置网格权重，使控件可以随窗口大小调整
+        # 设置网格权重
         main_frame.columnconfigure(1, weight=1)
         main_frame.rowconfigure(7, weight=1)
+    
+    # 其余方法保持不变...
+    def update_startup_button(self):
+        """根据当前是否在开机启动中更新按钮文本和状态显示"""
+        if self.is_in_startup():
+            self.startup_btn.config(text="移除开机启动")
+            self.startup_status_var.set("已设置")
+        else:
+            self.startup_btn.config(text="添加开机启动")
+            self.startup_status_var.set("未设置")
+    
+    def update_monitor_button_text(self):
+        """更新监控按钮的文本"""
+        if self.monitoring:
+            self.monitor_btn.config(text="停止监控")
+        else:
+            self.monitor_btn.config(text="开始监控")
     
     def select_source(self):
         path = filedialog.askdirectory(title="选择源文件夹")
@@ -214,6 +271,11 @@ class BackupTool:
     
     def log(self, message):
         """添加日志信息"""
+        # 确保log_text已初始化
+        if self.log_text is None:
+            print(f"日志组件未准备好: {message}")
+            return
+            
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         self.log_text.insert(tk.END, f"[{timestamp}] {message}\n")
         self.log_text.see(tk.END)  # 滚动到最新内容
@@ -509,7 +571,7 @@ class BackupTool:
                     return
             
             self.monitoring = True
-            self.monitor_btn.config(text="停止监控")
+            self.update_monitor_button_text()
             self.calculate_initial_hashes()
             self.log(f"开始监控，间隔 {interval} 秒")
             
@@ -520,26 +582,27 @@ class BackupTool:
         else:
             # 停止监控
             self.monitoring = False
-            self.monitor_btn.config(text="开始监控")
+            self.update_monitor_button_text()
             self.log("已停止监控")
             self.update_status("就绪")
     
     def toggle_startup(self):
-        """添加或移除开机启动"""
+        """添加或移除开机启动，并更新按钮状态"""
         if self.is_in_startup():
             # 移除开机启动
             if self.remove_from_startup():
                 self.log("已从开机启动中移除")
-                self.startup_status_var.set("未设置")
             else:
                 self.log("从开机启动中移除失败")
         else:
             # 添加到开机启动
             if self.add_to_startup():
                 self.log("已添加到开机启动")
-                self.startup_status_var.set("已设置")
             else:
                 self.log("添加到开机启动失败")
+        
+        # 无论操作成功与否，都更新按钮状态
+        self.update_startup_button()
     
     def get_executable_path(self):
         """获取当前程序的路径"""
@@ -624,13 +687,6 @@ class BackupTool:
             self.log(f"检查开机启动状态出错: {str(e)}")
             return False
     
-    def check_startup_status(self):
-        """检查并更新开机启动状态显示"""
-        if self.is_in_startup():
-            self.startup_status_var.set("已设置")
-        else:
-            self.startup_status_var.set("未设置")
-    
     def load_config(self):
         """加载配置文件"""
         self.config = configparser.ConfigParser()
@@ -663,16 +719,40 @@ class BackupTool:
     
     # 系统托盘相关功能
     def create_tray_icon(self):
-        """创建系统托盘图标"""
-        # 创建一个简单的图标
-        def create_default_icon():
+        """创建系统托盘图标，使用backup.ico"""
+        # 尝试加载指定的图标文件
+        try:
+            if self.icon_path and os.path.exists(self.icon_path):
+                icon = Image.open(self.icon_path)
+                self.log(f"已加载系统托盘图标: {os.path.basename(self.icon_path)}")
+            else:
+                # 如果找不到图标文件，创建默认图标
+                self.log(f"未找到图标文件，使用默认图标")
+                width = 64
+                height = 64
+                color1 = "blue"
+                color2 = "white"
+                
+                icon = Image.new("RGB", (width, height), color1)
+                dc = ImageDraw.Draw(icon)
+                dc.rectangle(
+                    (width // 4, height // 4, width * 3 // 4, height * 3 // 4),
+                    fill=color2
+                )
+                dc.rectangle(
+                    (width // 2, height // 4, width * 3 // 4, height * 3 // 4),
+                    fill=color1
+                )
+        except Exception as e:
+            # 创建默认图标作为最后的 fallback
+            self.log(f"加载图标失败: {str(e)}，使用默认图标")
             width = 64
             height = 64
             color1 = "blue"
             color2 = "white"
             
-            image = Image.new("RGB", (width, height), color1)
-            dc = ImageDraw.Draw(image)
+            icon = Image.new("RGB", (width, height), color1)
+            dc = ImageDraw.Draw(icon)
             dc.rectangle(
                 (width // 4, height // 4, width * 3 // 4, height * 3 // 4),
                 fill=color2
@@ -681,22 +761,6 @@ class BackupTool:
                 (width // 2, height // 4, width * 3 // 4, height * 3 // 4),
                 fill=color1
             )
-            return image
-        
-        # 尝试加载自定义图标
-        try:
-            if getattr(sys, 'frozen', False):
-                base_path = sys._MEIPASS
-            else:
-                base_path = os.path.dirname(os.path.abspath(__file__))
-            
-            icon_path = os.path.join(base_path, "backup.ico")
-            if os.path.exists(icon_path):
-                icon = Image.open(icon_path)
-            else:
-                icon = create_default_icon()
-        except:
-            icon = create_default_icon()
         
         # 创建菜单
         menu = (
@@ -766,19 +830,6 @@ def main():
     
     # 确保中文显示正常
     root = tk.Tk()
-    
-    # 设置窗口图标
-    try:
-        if getattr(sys, 'frozen', False):
-            base_path = sys._MEIPASS
-        else:
-            base_path = os.path.dirname(os.path.abspath(__file__))
-        
-        icon_path = os.path.join(base_path, "backup.ico")
-        if os.path.exists(icon_path):
-            root.iconbitmap(icon_path)
-    except:
-        pass  # 图标设置失败不影响程序运行
     
     app = BackupTool(root, start_minimized)
     root.mainloop()
