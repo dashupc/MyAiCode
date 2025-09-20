@@ -3,7 +3,7 @@
 block_cipher = None
 
 a = Analysis(
-    ['auto_backup_embedded_icon.py'],
+    ['auto_backup_with_hardware_reg.py'],
     pathex=[],
     binaries=[],
     datas=[('backup.ico', '.')],  # 这里指定要嵌入的图标文件
@@ -26,7 +26,7 @@ exe = EXE(
     a.zipfiles,
     a.datas,
     [],
-    name='BackupTool',  # 生成的EXE文件名
+    name='BackupToolV0.01',  # 生成的EXE文件名
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
