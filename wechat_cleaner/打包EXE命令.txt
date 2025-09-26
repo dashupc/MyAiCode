@@ -1,0 +1,1 @@
+pyinstaller --onefile --windowed --name "微信文件夹清理工具" --icon=wechatclean.ico wechat_cleaner.py
