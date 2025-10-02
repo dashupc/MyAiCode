@@ -14,7 +14,7 @@ import json
 import signal
 from urllib.parse import urljoin, urlparse
 import schedule
-from PIL import Image, ImageTk
+from PIL import Image, ImageDraw, ImageTk
 import getpass
 import winreg
 import tempfile
@@ -32,7 +32,7 @@ class MSSQLBackupTool:
     def __init__(self, root, silent_mode=False):
         self.root = root
         self.silent_mode = silent_mode
-        self.root.title("MSSQL数据库备份工具 - V0.43（布局调整版）")
+        self.root.title("MSSQL数据库备份工具 - V0.39（自定义图标版）")
         self.root.geometry("1000x700")
         
         # 确保主线程退出时能正常关闭
@@ -86,7 +86,7 @@ class MSSQLBackupTool:
         # 初始化日志
         self.setup_logging()
         
-        # 设置窗口图标和托盘图标（使用打包的icon.ico）
+        # 设置窗口图标和托盘图标（优先使用用户提供的icon.ico）
         self.set_icons()
         
         # 窗口居中
@@ -135,37 +135,51 @@ class MSSQLBackupTool:
         y = (self.root.winfo_screenheight() // 2) - (height // 2)
         self.root.geometry('{}x{}+{}+{}'.format(width, height, x, y))
 
-    def set_icons(self):
-        """设置窗口图标和托盘图标，使用打包的icon.ico"""
+    def create_default_icon(self, size=(64,64)):
+        """仅在用户提供的图标不可用时创建默认图标"""
         try:
+            # 创建一个简单的默认图标作为备选
+            image = Image.new('RGBA', size, (0, 100, 255, 255))  # 蓝色背景
+            draw = ImageDraw.Draw(image)
+            
+            # 绘制数据库图标
+            draw.rectangle([15, 15, size[0]-15, size[1]-20], fill=(255,255,255,255))
+            draw.rectangle([15, size[1]-20, size[0]-15, size[1]-15], fill=(255,255,255,255))
+            draw.line([20, 25, size[0]-20, 25], fill=(0,0,0,255), width=2)
+            draw.line([20, 35, size[0]-20, 35], fill=(0,0,0,255), width=2)
+            draw.line([20, 45, size[0]-20, 45], fill=(0,0,0,255), width=2)
+            
+            self.log("使用默认图标作为备选")
+            return image
+        except Exception as e:
+            self.log(f"创建默认图标失败: {str(e)}")
+            return None
+
+    def set_icons(self):
+        """设置窗口图标和托盘图标，优先使用用户提供的icon.ico"""
+        try:
+            self.icon_path = "icon.ico"  # 用户提供的图标文件
+            self.window_icon = None
+            self.tray_image = None
             self.common_icon = None  # 统一的图标对象
             self.temp_icon_path = None  # 临时图标路径
             
-            # 尝试从程序资源中获取图标（适用于打包后的情况）
-            try:
-                # 对于PyInstaller打包的程序，使用_MEIPASS获取临时资源路径
-                if getattr(sys, 'frozen', False):
-                    base_path = sys._MEIPASS
-                else:
-                    base_path = os.path.dirname(os.path.abspath(__file__))
-                
-                self.icon_path = os.path.join(base_path, "icon.ico")
-                
-                if os.path.exists(self.icon_path) and os.path.isfile(self.icon_path):
-                    # 加载打包的图标作为统一图标源
+            # 优先加载用户提供的图标文件
+            if os.path.exists(self.icon_path) and os.path.isfile(self.icon_path):
+                try:
+                    # 加载用户提供的图标作为统一图标源
                     self.common_icon = Image.open(self.icon_path)
-                    self.log(f"成功加载图标: {self.icon_path}")
-                else:
-                    raise FileNotFoundError(f"图标文件 {self.icon_path} 不存在")
-                    
-            except Exception as e:
-                self.log(f"加载图标失败: {str(e)}")
-                # 不再生成默认图标，仅使用系统默认图标
-                self.common_icon = None
+                    self.log(f"成功加载用户提供的图标: {self.icon_path}")
+                except Exception as e:
+                    self.log(f"加载用户提供的图标失败: {str(e)}，将使用默认图标")
+                    self.common_icon = self.create_default_icon()
+            else:
+                self.log(f"未找到用户提供的图标文件 {self.icon_path}，将使用默认图标")
+                self.common_icon = self.create_default_icon()
                 
             # 为窗口和托盘设置图标
             if self.common_icon:
-                # 创建临时ICO文件用于窗口图标
+                # 创建临时ICO文件用于窗口图标（如果需要）
                 try:
                     temp_icon = tempfile.NamedTemporaryFile(suffix='.ico', delete=False)
                     self.common_icon.save(temp_icon, format='ICO')
@@ -191,13 +205,10 @@ class MSSQLBackupTool:
             self.log(f"设置图标过程出错: {str(e)}")
 
     def init_tray_icon(self):
-        """使用pystray初始化系统托盘，使用打包的图标"""
-        if not self.tray_image and self.common_icon is None:
-            self.log("没有可用图标，使用系统默认图标初始化托盘")
-            # 使用系统默认图标
-            self.tray_image = None
-        elif not self.tray_image:
-            self.tray_image = self.common_icon
+        """使用pystray初始化系统托盘，使用统一图标"""
+        if not self.tray_image:
+            self.log("没有可用图标，无法初始化系统托盘")
+            return
             
         try:
             # 创建托盘菜单
@@ -213,7 +224,7 @@ class MSSQLBackupTool:
             # 创建托盘图标，添加双击事件处理
             self.tray_icon = pystray.Icon(
                 "mssql_backup_tool",
-                self.tray_image,  # 使用打包的图标
+                self.tray_image,  # 使用用户提供的图标
                 "MSSQL数据库备份工具",
                 menu
             )
@@ -225,7 +236,7 @@ class MSSQLBackupTool:
             self.tray_thread = threading.Thread(target=self.run_tray, daemon=True)
             self.tray_thread.start()
             
-            self.log("系统托盘初始化成功")
+            self.log("系统托盘初始化成功（使用用户提供的图标）")
             self.tray_initialized = True
             
         except Exception as e:
@@ -358,12 +369,12 @@ class MSSQLBackupTool:
 
     def setup_logging(self):
         logging.basicConfig(
-            filename='backup_log_v0.43.txt',
+            filename='backup_log_v0.39.txt',
             level=logging.INFO,
             format='%(asctime)s - %(levelname)s - %(message)s',
             encoding='utf-8'
         )
-        self.log("程序启动（版本V0.43 - 布局调整版）")
+        self.log("程序启动（版本V0.39 - 自定义图标版）")
 
     def create_widgets(self):
         main_frame = ttk.Frame(self.root, padding="10")
@@ -419,37 +430,31 @@ class MSSQLBackupTool:
         config_frame = ttk.Frame(scrollable_frame, padding="10")
         config_frame.pack(fill=tk.X, expand=True)
         
-        # 数据库连接设置 - 调整为用户名和密码在同一行
+        # 数据库连接设置 - 紧凑布局
         conn_frame = ttk.LabelFrame(config_frame, text="数据库连接设置", padding="8")
         conn_frame.pack(fill=tk.X, pady=4)
         
-        # 服务器地址行
         ttk.Label(conn_frame, text="服务器地址:").grid(row=0, column=0, sticky=tk.W, pady=3, padx=3)
         self.server_entry = ttk.Entry(conn_frame, width=40)
-        self.server_entry.grid(row=0, column=1, sticky=tk.W, pady=3, padx=3, columnspan=2)
-        ttk.Label(conn_frame, text="服务器地址格式示例", font=("SimHei", 8)).grid(row=0, column=3, sticky=tk.W, pady=3)
+        self.server_entry.grid(row=0, column=1, sticky=tk.W, pady=3, padx=3)
+        ttk.Label(conn_frame, text="服务器地址格式示例", font=("SimHei", 8)).grid(row=0, column=2, sticky=tk.W, pady=3)
         
-        # 用户名和密码在同一行
-        user_pass_frame = ttk.Frame(conn_frame)
-        user_pass_frame.grid(row=1, column=0, columnspan=4, sticky=tk.W, pady=3)
+        ttk.Label(conn_frame, text="用户名:").grid(row=1, column=0, sticky=tk.W, pady=3, padx=3)
+        self.user_entry = ttk.Entry(conn_frame, width=40)
+        self.user_entry.grid(row=1, column=1, sticky=tk.W, pady=3, padx=3)
         
-        ttk.Label(user_pass_frame, text="用户名:").pack(side=tk.LEFT, padx=(3, 3))
-        self.user_entry = ttk.Entry(user_pass_frame, width=20)
-        self.user_entry.pack(side=tk.LEFT, padx=(0, 15))
-        
-        ttk.Label(user_pass_frame, text="密码:").pack(side=tk.LEFT, padx=(3, 3))
-        self.password_entry = ttk.Entry(user_pass_frame, width=20, show="*")
-        self.password_entry.pack(side=tk.LEFT, padx=(0, 15))
-        
+        ttk.Label(conn_frame, text="密码:").grid(row=2, column=0, sticky=tk.W, pady=3, padx=3)
+        self.password_entry = ttk.Entry(conn_frame, width=40, show="*")
+        self.password_entry.grid(row=2, column=1, sticky=tk.W, pady=3, padx=3)
         self.show_password_var = tk.BooleanVar(value=False)
         ttk.Checkbutton(
-            user_pass_frame, 
+            conn_frame, 
             text="显示密码", 
             variable=self.show_password_var,
             command=self.toggle_password_visibility
-        ).pack(side=tk.LEFT)
+        ).grid(row=2, column=2, sticky=tk.W, pady=3)
         
-        # 数据库选择区域 - 紧凑布局，刷新按钮在添加按钮上方
+        # 数据库选择区域 - 紧凑布局
         db_selection_frame = ttk.LabelFrame(config_frame, text="数据库选择", padding="8")
         db_selection_frame.pack(fill=tk.X, pady=4)
         
@@ -464,12 +469,10 @@ class MSSQLBackupTool:
         available_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         self.available_listbox.config(yscrollcommand=available_scrollbar.set)
         
-        # 中间：操作按钮 - 刷新按钮在最上方
+        # 中间：操作按钮 - 紧凑排列
         buttons_frame = ttk.Frame(db_selection_frame, padding="4")
         buttons_frame.pack(side=tk.LEFT, padx=4, fill=tk.Y)
         
-        # 刷新数据库列表按钮在最上方
-        ttk.Button(buttons_frame, text="刷新数据库列表", command=self.start_async_database_load).pack(fill=tk.X, pady=1)
         ttk.Button(buttons_frame, text="添加 >", command=self.add_selected_databases).pack(fill=tk.X, pady=1)
         ttk.Button(buttons_frame, text="< 移除", command=self.remove_selected_databases).pack(fill=tk.X, pady=1)
         ttk.Button(buttons_frame, text="全部添加", command=self.add_all_databases).pack(fill=tk.X, pady=1)
@@ -486,43 +489,48 @@ class MSSQLBackupTool:
         selected_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         self.selected_listbox.config(yscrollcommand=selected_scrollbar.set)
         
-        # 数据库加载状态指示器
-        db_status_frame = ttk.Frame(db_selection_frame)
-        db_status_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=4)
+        # 数据库加载状态和刷新按钮
+        db_control_frame = ttk.Frame(db_selection_frame)
+        db_control_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=4)
         
-        self.db_status_indicator = ttk.Label(db_status_frame, text="准备加载数据库...", font=("SimHei", 9))
+        self.db_status_indicator = ttk.Label(db_control_frame, text="准备加载数据库...", font=("SimHei", 9))
         self.db_status_indicator.pack(side=tk.LEFT, padx=3)
         
-        # 备份设置 - 仅保留服务器备份模式
-        backup_frame = ttk.LabelFrame(config_frame, text="备份设置（仅服务器模式）", padding="8")
+        ttk.Button(db_control_frame, text="刷新数据库列表", command=self.start_async_database_load).pack(side=tk.RIGHT, padx=3)
+        
+        # 备份设置 - 紧凑布局
+        backup_frame = ttk.LabelFrame(config_frame, text="备份设置", padding="8")
         backup_frame.pack(fill=tk.X, pady=4)
         
-        # 移除备份模式选择，直接使用"先服务器再下载"模式
-        ttk.Label(backup_frame, text="备份流程: 先备份到服务器，再下载到本地").grid(
-            row=0, column=0, columnspan=3, sticky=tk.W, pady=5, padx=3, ipady=2)
+        ttk.Label(backup_frame, text="备份模式:").grid(row=0, column=0, sticky=tk.W, pady=3, padx=3)
+        self.backup_mode = tk.StringVar(value="local")
+        ttk.Radiobutton(backup_frame, text="直接本地备份", variable=self.backup_mode, value="local").grid(row=0, column=1, sticky=tk.W, pady=3)
+        ttk.Radiobutton(backup_frame, text="先服务器再下载", variable=self.backup_mode, value="server_then_web").grid(row=0, column=2, sticky=tk.W, pady=3)
         
         ttk.Label(backup_frame, text="服务器IIS路径:").grid(row=1, column=0, sticky=tk.W, pady=3, padx=3)
         self.server_temp_path_entry = ttk.Entry(backup_frame, width=35)
         self.server_temp_path_entry.grid(row=1, column=1, sticky=tk.W, pady=3, padx=3)
-        ttk.Label(backup_frame, text="服务器上存储备份的路径", font=("SimHei", 8)).grid(row=1, column=2, sticky=tk.W, pady=3)
         
         ttk.Label(backup_frame, text="服务器Web地址:").grid(row=2, column=0, sticky=tk.W, pady=3, padx=3)
         self.server_web_url_entry = ttk.Entry(backup_frame, width=35)
         self.server_web_url_entry.grid(row=2, column=1, sticky=tk.W, pady=3, padx=3)
-        ttk.Label(backup_frame, text="用于下载备份的HTTP地址", font=("SimHei", 8)).grid(row=2, column=2, sticky=tk.W, pady=3)
+        
+        # 服务器清理API端点设置
+        ttk.Label(backup_frame, text="清理API端点:").grid(row=3, column=0, sticky=tk.W, pady=3, padx=3)
+        self.server_cleanup_api_entry = ttk.Entry(backup_frame, width=35)
+        self.server_cleanup_api_entry.grid(row=3, column=1, sticky=tk.W, pady=3, padx=3)
         
         path_frame = ttk.Frame(backup_frame)
-        path_frame.grid(row=3, column=0, columnspan=3, sticky=tk.W, pady=3, padx=3)
+        path_frame.grid(row=4, column=0, columnspan=3, sticky=tk.W, pady=3, padx=3)
         
         ttk.Label(path_frame, text="本地保存路径:").pack(side=tk.LEFT, padx=3, pady=3)
         self.local_save_path_entry = ttk.Entry(path_frame, width=35)
         self.local_save_path_entry.pack(side=tk.LEFT, padx=3, pady=3, fill=tk.X, expand=True)
         ttk.Button(path_frame, text="浏览", command=self.browse_local_path).pack(side=tk.LEFT, padx=3, pady=3)
         
-        ttk.Label(backup_frame, text="文件名前缀:").grid(row=4, column=0, sticky=tk.W, pady=3, padx=3)
+        ttk.Label(backup_frame, text="文件名前缀:").grid(row=5, column=0, sticky=tk.W, pady=3, padx=3)
         self.filename_prefix_entry = ttk.Entry(backup_frame, width=35)
-        self.filename_prefix_entry.grid(row=4, column=1, sticky=tk.W, pady=3, padx=3)
-        ttk.Label(backup_frame, text="用于区分不同备份的前缀", font=("SimHei", 8)).grid(row=4, column=2, sticky=tk.W, pady=3)
+        self.filename_prefix_entry.grid(row=5, column=1, sticky=tk.W, pady=3, padx=3)
         
         # 自动清理设置 - 紧凑布局
         cleanup_frame = ttk.LabelFrame(config_frame, text="自动清理设置", padding="8")
@@ -580,29 +588,24 @@ class MSSQLBackupTool:
         
         server_cleanup_grid.columnconfigure(4, weight=1)
         
-        # 系统设置 - 调整为最小化到托盘和随Windows启动在同一行
+        # 系统设置 - 紧凑布局
         system_frame = ttk.LabelFrame(config_frame, text="系统设置", padding="8")
         system_frame.pack(fill=tk.X, pady=4)
         
-        # 选项在同一行显示
-        system_options_frame = ttk.Frame(system_frame)
-        system_options_frame.pack(fill=tk.X, pady=2)
-        
-        # 最小化到系统托盘选项
+        # 选项紧凑排列
         ttk.Checkbutton(
-            system_options_frame, 
+            system_frame, 
             text="最小化到系统托盘", 
             variable=self.minimize_to_tray,
             command=self.log_minimize_setting
-        ).pack(side=tk.LEFT, padx=(0, 20))
+        ).pack(anchor=tk.W, pady=2, padx=2)
         
-        # 随Windows启动选项（原开机自动启动）
         ttk.Checkbutton(
-            system_options_frame, 
-            text="随Windows启动", 
+            system_frame, 
+            text="开机自动启动", 
             variable=self.autostart_var,
             command=self.toggle_autostart
-        ).pack(side=tk.LEFT)
+        ).pack(anchor=tk.W, pady=2, padx=2)
         
         # 自动备份设置 - 紧凑布局
         auto_backup_frame = ttk.LabelFrame(config_frame, text="自动备份设置", padding="8")
@@ -663,6 +666,7 @@ class MSSQLBackupTool:
         
         # 测试按钮
         ttk.Button(button_frame, text="测试Web连接", command=self.test_web_connection).pack(side=tk.LEFT, padx=3)
+        ttk.Button(button_frame, text="测试清理API", command=self.test_cleanup_api).pack(side=tk.LEFT, padx=3)
         ttk.Button(button_frame, text="保存配置", command=self.save_config).pack(side=tk.LEFT, padx=3)
         ttk.Button(button_frame, text="测试数据库连接", command=self.test_connection).pack(side=tk.LEFT, padx=3)
         ttk.Button(button_frame, text="退出", command=lambda: self.quit_application(force=True)).pack(side=tk.RIGHT, padx=3)
@@ -677,7 +681,7 @@ class MSSQLBackupTool:
         ttk.Button(log_control_frame, text="清空日志", command=self.clear_log).pack(side=tk.RIGHT, padx=5)
         ttk.Button(log_control_frame, text="导出日志", command=self.export_log).pack(side=tk.RIGHT, padx=5)
         
-        log_display_frame = ttk.LabelFrame(log_frame, text="操作日志（版本V0.43 - 布局调整版）", padding="10")
+        log_display_frame = ttk.LabelFrame(log_frame, text="操作日志（版本V0.39 - 自定义图标版）", padding="10")
         log_display_frame.pack(fill=tk.BOTH, expand=True, pady=5)
         
         self.log_text = tk.Text(log_display_frame, height=25, wrap=tk.WORD)
@@ -695,7 +699,7 @@ class MSSQLBackupTool:
         monitor_frame.pack(fill=tk.BOTH, expand=True)
         
         # 系统状态区域 - 分为两列显示
-        status_frame = ttk.LabelFrame(monitor_frame, text="系统状态（版本V0.43 - 布局调整版）", padding="10")
+        status_frame = ttk.LabelFrame(monitor_frame, text="系统状态（版本V0.39 - 自定义图标版）", padding="10")
         status_frame.pack(fill=tk.X, pady=5)
         
         # 创建两列布局
@@ -736,8 +740,7 @@ class MSSQLBackupTool:
         self.selected_count_label = ttk.Label(col2, text="0")
         self.selected_count_label.grid(row=2, column=1, sticky=tk.W, pady=5)
         
-        # 更新开机启动状态标签文本
-        ttk.Label(col2, text="随Windows启动状态:").grid(row=3, column=0, sticky=tk.W, pady=5, padx=5)
+        ttk.Label(col2, text="开机启动状态:").grid(row=3, column=0, sticky=tk.W, pady=5, padx=5)
         self.autostart_status_label = ttk.Label(col2, text="未启用", foreground="orange")
         self.autostart_status_label.grid(row=3, column=1, sticky=tk.W, pady=5)
         
@@ -900,7 +903,7 @@ class MSSQLBackupTool:
             self.log_text.config(state=tk.DISABLED)
             
             timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-            default_filename = f"backup_log_export_{timestamp}_V0.43.txt"
+            default_filename = f"backup_log_export_{timestamp}_V0.39.txt"
             file_path = filedialog.asksaveasfilename(
                 defaultextension=".txt",
                 filetypes=[("文本文件", "*.txt"), ("所有文件", "*.*")],
@@ -920,7 +923,7 @@ class MSSQLBackupTool:
 
     def load_history_log(self):
         try:
-            log_file = 'backup_log_v0.43.txt'
+            log_file = 'backup_log_v0.39.txt'
             if os.path.exists(log_file):
                 with open(log_file, 'r', encoding='utf-8') as f:
                     lines = f.readlines()[-100:]
@@ -930,7 +933,7 @@ class MSSQLBackupTool:
                         self.log_text.insert(tk.END, line)
                     self.log_text.see(tk.END)
                     self.log_text.config(state=tk.DISABLED)
-                self.log("已加载最近的日志记录（版本V0.43）")
+                self.log("已加载最近的日志记录（版本V0.39）")
         except Exception as e:
             self.log(f"加载历史日志失败: {str(e)}")
 
@@ -1020,6 +1023,29 @@ class MSSQLBackupTool:
             error_msg = f"Web服务器连接失败: {str(e)}"
             self.log(error_msg)
             messagebox.showerror("错误", error_msg)
+    
+    def test_cleanup_api(self):
+        """测试服务器清理API是否可用"""
+        try:
+            self.log("正在测试服务器清理API...")
+            api_url = self.server_cleanup_api_entry.get().strip()
+            if not api_url:
+                self.log("请输入服务器清理API端点")
+                return
+                
+            # 发送测试请求
+            response = requests.get(api_url, params={"test": "true"}, timeout=15)
+            
+            if response.status_code == 200:
+                self.log("服务器清理API测试成功!")
+                messagebox.showinfo("成功", "服务器清理API连接成功!")
+            else:
+                self.log(f"服务器清理API测试失败，状态码: {response.status_code}")
+                messagebox.showerror("错误", f"服务器清理API测试失败，状态码: {response.status_code}")
+        except Exception as e:
+            error_msg = f"服务器清理API测试失败: {str(e)}"
+            self.log(error_msg)
+            messagebox.showerror("错误", error_msg)
 
     def refresh_databases(self):
         try:
@@ -1081,16 +1107,16 @@ class MSSQLBackupTool:
     def save_config(self):
         try:
             config = {
-                'version': 'V0.43',
+                'version': 'V0.39',
                 'server': self.server_entry.get(),
                 'user': self.user_entry.get(),
                 'password': self.password_entry.get(),
                 'server_temp_path': self.server_temp_path_entry.get(),
                 'server_web_url': self.server_web_url_entry.get(),
+                'server_cleanup_api': self.server_cleanup_api_entry.get(),
                 'local_save_path': self.local_save_path_entry.get(),
                 'filename_prefix': self.filename_prefix_entry.get(),
-                # 固定使用服务器模式
-                'backup_mode': 'server_then_web',
+                'backup_mode': self.backup_mode.get(),
                 'auto_backup_enabled': self.auto_backup_var.get(),
                 'backup_hour': self.backup_hour.get(),
                 'backup_minute': self.backup_minute.get(),
@@ -1102,7 +1128,7 @@ class MSSQLBackupTool:
                 'minimize_to_tray': self.minimize_to_tray.get()
             }
             
-            config_file = 'backup_config_v0.43.json'
+            config_file = 'backup_config_v0.39.json'
             with open(config_file, 'w', encoding='utf-8') as f:
                 json.dump(config, f, ensure_ascii=False, indent=4)
             
@@ -1122,9 +1148,9 @@ class MSSQLBackupTool:
 
     def load_config(self):
         try:
-            config_file = 'backup_config_v0.43.json'
+            config_file = 'backup_config_v0.39.json'
             if not os.path.exists(config_file):
-                for old_version in ['v0.42', 'v0.41']:
+                for old_version in ['v0.38', 'v0.37', 'v0.36']:
                     old_config = f'backup_config_{old_version}.json'
                     if os.path.exists(old_config):
                         config_file = old_config
@@ -1152,15 +1178,17 @@ class MSSQLBackupTool:
                 self.server_web_url_entry.delete(0, tk.END)
                 self.server_web_url_entry.insert(0, config.get('server_web_url', ''))
                 
+                # 加载服务器清理API配置
+                self.server_cleanup_api_entry.delete(0, tk.END)
+                self.server_cleanup_api_entry.insert(0, config.get('server_cleanup_api', ''))
+                
                 self.local_save_path_entry.delete(0, tk.END)
                 self.local_save_path_entry.insert(0, config.get('local_save_path', ''))
                 
                 self.filename_prefix_entry.delete(0, tk.END)
                 self.filename_prefix_entry.insert(0, config.get('filename_prefix', ''))
                 
-                # 忽略配置文件中的备份模式，强制使用服务器模式
-                self.log("已强制设置为服务器备份模式")
-                
+                self.backup_mode.set(config.get('backup_mode', 'local'))
                 self.auto_backup_var.set(config.get('auto_backup_enabled', False))
                 self.backup_hour.set(config.get('backup_hour', '18'))
                 self.backup_minute.set(config.get('backup_minute', '00'))
@@ -1182,7 +1210,7 @@ class MSSQLBackupTool:
                 else:
                     self.log("配置文件中未找到已选备份数据库记录")
             
-            self.log("配置已加载（版本V0.43）")
+            self.log("配置已加载（版本V0.39）")
             
             # 根据配置状态更新自动备份相关UI
             if self.auto_backup_var.get():
@@ -1312,8 +1340,8 @@ class MSSQLBackupTool:
                 winreg.SetValueEx(key, "MSSQLBackupTool", 0, winreg.REG_SZ, command)
                 winreg.CloseKey(key)
                 
-                self.log("已启用随Windows启动（静默模式）")
-                messagebox.showinfo("成功", "已启用随Windows启动，程序将以静默模式运行!")
+                self.log("已启用开机自动启动（静默模式）")
+                messagebox.showinfo("成功", "已启用开机自动启动，程序将以静默模式运行!")
             else:
                 key = winreg.OpenKey(
                     winreg.HKEY_CURRENT_USER,
@@ -1325,13 +1353,13 @@ class MSSQLBackupTool:
                 winreg.DeleteValue(key, "MSSQLBackupTool")
                 winreg.CloseKey(key)
                 
-                self.log("已禁用随Windows启动")
-                messagebox.showinfo("成功", "已禁用随Windows启动！")
+                self.log("已禁用开机启动")
+                messagebox.showinfo("成功", "已禁用开机启动！")
                 
             self.update_autostart_status()
             
         except WindowsError as e:
-            error_msg = f"修改随Windows启动设置失败: {str(e)}"
+            error_msg = f"修改开机启动设置失败: {str(e)}"
             self.log(error_msg)
             messagebox.showerror("错误", error_msg)
 
@@ -1524,7 +1552,7 @@ class MSSQLBackupTool:
                 return 0, 0
                 
             cutoff_time = datetime.datetime.now() - datetime.timedelta(days=days)
-            self.log(f"开始自动清理本地备份（版本V0.43）：删除 {days} 天前的备份文件")
+            self.log(f"开始自动清理本地备份（版本V0.39）：删除 {days} 天前的备份文件")
             
             prefix = self.filename_prefix_entry.get().strip() or "backup"
             
@@ -1568,26 +1596,41 @@ class MSSQLBackupTool:
                 self.log("服务器自动清理功能已禁用，跳过删除过期服务器备份")
                 return 0, 0
                 
-            # 注意：此处仅保留本地日志记录
+            api_url = self.server_cleanup_api_entry.get().strip()
+            if not api_url:
+                self.log("服务器清理API端点未设置，无法执行服务器清理")
+                return 0, 0
+                
             days = self.server_retention_days.get()
             if days <= 0:
                 self.log("服务器备份保留天数设置无效，跳过服务器清理")
                 return 0, 0
                 
             self.log(f"开始{'手动' if manual else '自动'}清理服务器备份：删除 {days} 天前的备份文件")
-            self.log("服务器清理功能已调整，具体实现需根据实际环境配置")
             
-            # 实际应用中需要根据您的服务器清理机制替换以下代码
-            # 这里仅作为占位，返回0表示未执行实际删除操作
-            deleted_count = 0
-            kept_count = 0
+            # 构建请求参数
+            params = {
+                "retention_days": days,
+                "prefix": self.filename_prefix_entry.get().strip() or "backup"
+            }
             
-            self.log(f"服务器备份清理完成：删除 {deleted_count} 个过期备份，保留 {kept_count} 个最新备份")
+            # 发送清理请求到服务器API
+            response = requests.post(api_url, json=params, timeout=60)
             
-            # 更新今日清理统计
-            self.today_server_cleaned_count += deleted_count
-            
-            return deleted_count, kept_count
+            if response.status_code == 200:
+                result = response.json()
+                deleted_count = result.get('deleted_count', 0)
+                kept_count = result.get('kept_count', 0)
+                
+                self.log(f"服务器备份清理完成：删除 {deleted_count} 个过期备份，保留 {kept_count} 个最新备份")
+                
+                # 更新今日清理统计
+                self.today_server_cleaned_count += deleted_count
+                
+                return deleted_count, kept_count
+            else:
+                self.log(f"服务器备份清理失败，状态码: {response.status_code}，响应内容: {response.text}")
+                return 0, 0
                 
         except Exception as e:
             self.log(f"服务器备份清理过程出错: {str(e)}")
@@ -1775,55 +1818,94 @@ class MSSQLBackupTool:
             if not conn_str:
                 return False
                 
-            # 强制使用服务器备份模式
-            backup_mode = "server_then_web"
+            backup_mode = self.backup_mode.get()
             
             self.log(f"开始备份数据库: {db_name}")
             
-            # 仅保留服务器备份模式的代码
-            server_temp_path = self.server_temp_path_entry.get().strip()
-            server_web_url = self.server_web_url_entry.get().strip()
-            
-            if not server_temp_path or not server_web_url:
-                self.log("服务器路径或Web URL未设置")
-                return False
-            
-            server_temp_path = server_temp_path.replace('\\', '/')
-            server_full_path = os.path.join(server_temp_path, backup_filename).replace('\\', '/')
-            web_download_url = urljoin(server_web_url, backup_filename)
-            
-            self.log(f"服务器存储路径: {server_full_path}")
-            self.log(f"Web下载地址: {web_download_url}")
-            
-            conn = pyodbc.connect(conn_str)
-            conn.autocommit = True
-            cursor = conn.cursor()
-            
-            backup_sql = f"BACKUP DATABASE [{db_name}] TO DISK = N'{server_full_path}' WITH NOFORMAT, NOINIT, NAME = N'{db_name}-完整 数据库 备份', SKIP, NOREWIND, NOUNLOAD, STATS = 10"
-            cursor.execute(backup_sql)
-            
-            self.log(f"等待服务器端 {db_name} 备份完成...")
-            time.sleep(30)  # 等待服务器备份完成
-            conn.close()
-            
-            self.log(f"开始通过Web下载 {db_name} 备份文件...")
-            download_success = self.download_file_from_web(web_download_url, local_full_path)
-            
-            if download_success:
-                file_size = os.path.getsize(local_full_path)
-                size_str = f"{file_size/(1024*1024):.2f} MB"
-                self.log(f"数据库 {db_name} 备份并下载成功!")
+            if backup_mode == "local":
+                full_path = local_full_path.replace('\\', '/')
+                self.log(f"备份文件将保存到: {full_path}")
                 
-                self.add_backup_record(db_name, timestamp, "成功", size_str)
-                self.update_daily_stats(success=True)
+                conn = pyodbc.connect(conn_str)
+                conn.autocommit = True
+                cursor = conn.cursor()
                 
-                return True
+                backup_sql = f"BACKUP DATABASE [{db_name}] TO DISK = N'{full_path}' WITH NOFORMAT, NOINIT, NAME = N'{db_name}-完整 数据库 备份', SKIP, NOREWIND, NOUNLOAD, STATS = 10"
+                cursor.execute(backup_sql)
+                
+                self.log(f"等待 {db_name} 备份完成...")
+                # 等待文件解锁
+                start_time = time.time()
+                while time.time() - start_time < 300:  # 最多等待5分钟
+                    try:
+                        with open(full_path, 'rb'):
+                            break
+                    except:
+                        time.sleep(5)
+                
+                conn.close()
+                
+                if os.path.exists(full_path) and os.path.getsize(full_path) > 0:
+                    file_size = os.path.getsize(full_path)
+                    size_str = f"{file_size/(1024*1024):.2f} MB"
+                    self.log(f"数据库 {db_name} 备份成功!")
+                    self.log(f"备份文件大小: {size_str}")
+                    
+                    self.add_backup_record(db_name, timestamp, "成功", size_str)
+                    self.update_daily_stats(success=True)
+                    
+                    return True
+                else:
+                    self.log(f"备份过程完成，但未找到 {db_name} 的备份文件")
+                    self.add_backup_record(db_name, timestamp, "失败", "0 MB")
+                    self.update_daily_stats(success=False)
+                    
+                    return False
+                    
             else:
-                self.log(f"{db_name} 备份文件已保存到服务器，但Web下载失败")
-                self.add_backup_record(db_name, timestamp, "失败", "0 MB")
-                self.update_daily_stats(success=False)
+                server_temp_path = self.server_temp_path_entry.get().strip()
+                server_web_url = self.server_web_url_entry.get().strip()
                 
-                return False
+                if not server_temp_path or not server_web_url:
+                    self.log("服务器路径或Web URL未设置")
+                    return False
+                
+                server_temp_path = server_temp_path.replace('\\', '/')
+                server_full_path = os.path.join(server_temp_path, backup_filename).replace('\\', '/')
+                web_download_url = urljoin(server_web_url, backup_filename)
+                
+                self.log(f"服务器存储路径: {server_full_path}")
+                self.log(f"Web下载地址: {web_download_url}")
+                
+                conn = pyodbc.connect(conn_str)
+                conn.autocommit = True
+                cursor = conn.cursor()
+                
+                backup_sql = f"BACKUP DATABASE [{db_name}] TO DISK = N'{server_full_path}' WITH NOFORMAT, NOINIT, NAME = N'{db_name}-完整 数据库 备份', SKIP, NOREWIND, NOUNLOAD, STATS = 10"
+                cursor.execute(backup_sql)
+                
+                self.log(f"等待服务器端 {db_name} 备份完成...")
+                time.sleep(30)  # 等待服务器备份完成
+                conn.close()
+                
+                self.log(f"开始通过Web下载 {db_name} 备份文件...")
+                download_success = self.download_file_from_web(web_download_url, local_full_path)
+                
+                if download_success:
+                    file_size = os.path.getsize(local_full_path)
+                    size_str = f"{file_size/(1024*1024):.2f} MB"
+                    self.log(f"数据库 {db_name} 备份并下载成功!")
+                    
+                    self.add_backup_record(db_name, timestamp, "成功", size_str)
+                    self.update_daily_stats(success=True)
+                    
+                    return True
+                else:
+                    self.log(f"{db_name} 备份文件已保存到服务器，但Web下载失败")
+                    self.add_backup_record(db_name, timestamp, "失败", "0 MB")
+                    self.update_daily_stats(success=False)
+                    
+                    return False
                 
         except Exception as e:
             error_msg = f"{db_name} 备份失败: {str(e)}"
