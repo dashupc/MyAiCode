@@ -14,6 +14,13 @@ class WPSCacheExtractor:
         self.root.geometry("800x600")
         self.root.resizable(True, True)
         
+        # WPS缓存路径特征关键词
+        self.cache_keywords = [
+            "kingsoft",    # 金山软件标识
+            "office6",     # WPS Office 6版本标识
+            "backup"       # 备份缓存目录标识
+        ]
+        
         # 设置中文字体支持
         self.style = ttk.Style()
         self.style.configure("Treeview.Heading", font=("SimHei", 10, "bold"))
@@ -27,8 +34,8 @@ class WPSCacheExtractor:
         # 创建UI
         self.create_widgets()
         
-        # 加载缓存文件列表
-        self.load_cache_files()
+        # 检查默认路径有效性并加载缓存文件列表
+        self.check_and_load_cache()
     
     def get_default_cache_path(self):
         """获取默认的WPS缓存路径"""
@@ -38,6 +45,24 @@ class WPSCacheExtractor:
         except Exception as e:
             messagebox.showerror("错误", f"无法获取默认缓存路径: {str(e)}")
             return ""
+    
+    def is_valid_cache_path(self, path):
+        """
+        判断路径是否为有效的WPS缓存路径
+        根据路径中是否包含所有必要的关键词来判断
+        """
+        if not path or not os.path.isdir(path):
+            return False
+            
+        # 将路径转换为小写，便于不区分大小写的检查
+        path_lower = path.lower()
+        
+        # 检查是否包含所有必要的关键词
+        for keyword in self.cache_keywords:
+            if keyword not in path_lower:
+                return False
+                
+        return True
     
     def create_widgets(self):
         """创建GUI组件"""
@@ -60,13 +85,20 @@ class WPSCacheExtractor:
         path_frame.pack(side="left", fill="x", expand=True)
         
         self.source_path_var = tk.StringVar(value=self.default_cache_path)
-        ttk.Entry(path_frame, textvariable=self.source_path_var, width=70).pack(side="left", fill="x", expand=True, padx=(0, 5))
+        # 路径输入框失去焦点时检查路径有效性
+        self.source_entry = ttk.Entry(path_frame, textvariable=self.source_path_var, width=70)
+        self.source_entry.pack(side="left", fill="x", expand=True, padx=(0, 5))
+        self.source_entry.bind("<FocusOut>", self.validate_path_on_focus_out)
         
         button_frame = ttk.Frame(path_frame)
         button_frame.pack(side="left")
         
         ttk.Button(button_frame, text="浏览", command=self.browse_source).pack(side="left", padx=2)
         ttk.Button(button_frame, text="搜索目录", command=self.search_cache_directory).pack(side="left", padx=2)
+        
+        # 路径有效性提示标签
+        self.path_validity_var = tk.StringVar(value="")
+        ttk.Label(source_frame, textvariable=self.path_validity_var, foreground="red").pack(side="left", padx=5)
         
         # 文件搜索框
         search_frame = ttk.LabelFrame(self.root, text="文件搜索", padding="10")
@@ -133,6 +165,29 @@ class WPSCacheExtractor:
         self.status_var = tk.StringVar(value="就绪")
         ttk.Label(self.root, textvariable=self.status_var).pack(fill="x", padx=10, pady=5)
     
+    def validate_path_on_focus_out(self, event):
+        """当路径输入框失去焦点时验证路径有效性"""
+        path = self.source_path_var.get()
+        self.update_path_validity(path)
+    
+    def update_path_validity(self, path):
+        """更新路径有效性提示"""
+        if not path:
+            self.path_validity_var.set("")
+            return
+            
+        if self.is_valid_cache_path(path):
+            self.path_validity_var.set("✓ 有效WPS缓存路径")
+            self.path_validity_var.set("")  # 可以选择隐藏有效提示，只显示错误提示
+        else:
+            self.path_validity_var.set("! 可能不是有效的WPS缓存路径")
+    
+    def check_and_load_cache(self):
+        """检查路径有效性并加载缓存文件"""
+        path = self.source_path_var.get()
+        self.update_path_validity(path)
+        self.load_cache_files()
+    
     def clear_placeholder(self, event):
         """清除占位文本"""
         if self.search_entry.get() == "输入文件名关键字搜索":
@@ -156,6 +211,7 @@ class WPSCacheExtractor:
     def set_path_to_drive(self, drive):
         """将路径设置为指定盘符"""
         self.source_path_var.set(drive + "\\")
+        self.update_path_validity(self.source_path_var.get())
         self.load_cache_files()
     
     def browse_source(self):
@@ -163,6 +219,7 @@ class WPSCacheExtractor:
         path = filedialog.askdirectory(title="选择WPS缓存目录")
         if path:
             self.source_path_var.set(path)
+            self.update_path_validity(path)
             self.load_cache_files()
     
     def browse_target(self):
@@ -192,15 +249,22 @@ class WPSCacheExtractor:
         threading.Thread(target=self._perform_directory_search, args=(drive,), daemon=True).start()
     
     def _perform_directory_search(self, drive):
-        """执行目录搜索的后台任务"""
-        search_pattern = os.path.join("*", "AppData", "Roaming", "kingsoft", "office6", "backup")
+        """执行目录搜索的后台任务，使用关键词过滤"""
         found_paths = []
         
         try:
-            # 使用glob搜索可能的路径
-            for path in Path(drive).glob(search_pattern):
-                if path.is_dir():
-                    found_paths.append(str(path))
+            # 递归搜索所有包含kingsoft的目录
+            for root_dir, dirs, _ in os.walk(drive):
+                # 检查当前目录是否包含所有必要的关键词
+                path_lower = root_dir.lower()
+                contains_all = all(keyword in path_lower for keyword in self.cache_keywords)
+                
+                if contains_all and os.path.isdir(root_dir):
+                    found_paths.append(root_dir)
+                    
+                # 优化搜索速度：如果已找到合理数量的路径，提前停止搜索
+                if len(found_paths) >= 10:
+                    break
             
             # 如果找到多个路径，让用户选择
             if len(found_paths) > 0:
@@ -218,6 +282,7 @@ class WPSCacheExtractor:
         if len(paths) == 1:
             # 只有一个结果，直接使用
             self.source_path_var.set(paths[0])
+            self.update_path_validity(paths[0])
             self.load_cache_files()
             messagebox.showinfo("搜索结果", f"找到WPS缓存目录:\n{paths[0]}")
         else:
@@ -248,6 +313,7 @@ class WPSCacheExtractor:
                 if listbox.curselection():
                     selected = paths[listbox.curselection()[0]]
                     self.source_path_var.set(selected)
+                    self.update_path_validity(selected)
                     self.load_cache_files()
                     result_window.destroy()
             
@@ -307,6 +373,12 @@ class WPSCacheExtractor:
             self.status_var.set(f"错误: 缓存路径不存在 - {cache_path}")
             return
         
+        # 检查路径是否有效，但仍然尝试加载文件
+        if not self.is_valid_cache_path(cache_path):
+            self.status_var.set(f"警告: 路径可能不是有效的WPS缓存目录 - {cache_path}")
+        else:
+            self.status_var.set(f"正在加载文件...")
+        
         try:
             # 获取所有文件
             files = [f for f in os.listdir(cache_path) if os.path.isfile(os.path.join(cache_path, f))]
@@ -348,6 +420,10 @@ class WPSCacheExtractor:
             messagebox.showerror("错误", f"源路径不存在: {source_path}")
             return
         
+        if not self.is_valid_cache_path(source_path):
+            if not messagebox.askyesno("警告", f"所选路径可能不是有效的WPS缓存目录，仍要继续吗？\n{source_path}"):
+                return
+        
         if not target_path:
             messagebox.showerror("错误", "请指定目标路径")
             return
@@ -373,6 +449,10 @@ class WPSCacheExtractor:
         if not source_path or not os.path.exists(source_path):
             messagebox.showerror("错误", f"源路径不存在: {source_path}")
             return
+        
+        if not self.is_valid_cache_path(source_path):
+            if not messagebox.askyesno("警告", f"所选路径可能不是有效的WPS缓存目录，仍要继续吗？\n{source_path}"):
+                return
         
         if not target_path:
             messagebox.showerror("错误", "请指定目标路径")
