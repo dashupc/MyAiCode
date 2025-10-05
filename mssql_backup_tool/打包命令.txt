@@ -1,0 +1,4 @@
+pyinstaller --name "MSSQL备份工具" --hidden-import=wmi --icon=icon.ico --onefile --noconsole --add-data "icon.ico;." mssql_backup_tool.py
+
+
+pyinstaller --onefile --name "MSSQL备份工具" --hidden-import=wmi mssql_backup_tool.py

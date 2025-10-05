@@ -1,0 +1,25 @@
+2025-10-04 16:14:05,575 - INFO - 程序启动（版本V0.47 - 带联系方式）
+2025-10-04 16:14:05,581 - INFO - 日志文件保存路径: D:\MyAiCode\mssql_backup_tool\dist\backup_log_v0.47.txt
+2025-10-04 16:14:05,617 - INFO - 成功加载高分辨率图标: C:\Users\WIN\AppData\Local\Temp\_MEI227402\icon.ico (256x256)
+2025-10-04 16:14:05,623 - INFO - 设置窗口图标时出错: 'ICO'
+2025-10-04 16:14:05,625 - INFO - 托盘图标设置完成（高分辨率支持）
+2025-10-04 16:14:05,635 - INFO - 系统托盘初始化成功
+2025-10-04 16:14:05,743 - INFO - 检测到旧版本(v0.45)配置文件，正在加载...
+2025-10-04 16:14:05,749 - INFO - 已强制设置为服务器备份模式
+2025-10-04 16:14:05,760 - INFO - 从配置文件加载了 1 个已选备份数据库: textdata
+2025-10-04 16:14:05,763 - INFO - 配置已加载（版本V0.47）
+2025-10-04 16:14:05,769 - INFO - 已设置每天 09:00 自动备份
+2025-10-04 16:14:05,774 - INFO - 已设置每天 09:30 自动清理服务器备份
+2025-10-04 16:14:05,794 - INFO - 开始异步加载数据库列表...
+2025-10-04 16:14:05,799 - INFO - 定时任务线程已启动
+2025-10-04 16:14:05,803 - INFO - 下次备份时间更新线程已启动
+2025-10-04 16:14:05,929 - INFO - 正在刷新数据库列表...
+2025-10-04 16:16:00,474 - INFO - 刷新数据库列表失败: ('08001', '[08001] [Microsoft][ODBC Driver 17 for SQL Server]Named Pipes Provider: Could not open a connection to SQL Server [53].  (53) (SQLDriverConnect); [08001] [Microsoft][ODBC Driver 17 for SQL Server]Login timeout expired (0); [08001] [Microsoft][ODBC Driver 17 for SQL Server]Invalid connection string attribute (0); [08001] [Microsoft][ODBC Driver 17 for SQL Server]A network-related or instance-specific error has occurred while establishing a connection to SQL Server. Server is not found or not accessible. Check if instance name is correct and if SQL Server is configured to allow remote connections. For more information see SQL Server Books Online. (53)')
+2025-10-04 16:16:21,294 - INFO - QQ号 88179096 已复制到剪贴板
+2025-10-04 16:16:22,359 - INFO - 已打开网址: http://www.itvip.com.cn
+2025-10-04 16:17:40,363 - INFO - 配置已保存到 D:\MyAiCode\mssql_backup_tool\dist\backup_config_v0.47.json，备份列表中包含 1 个数据库: textdata
+2025-10-04 16:17:41,520 - INFO - 已设置每天 09:00 自动备份
+2025-10-04 16:17:41,529 - INFO - 已设置每天 09:30 自动清理服务器备份
+2025-10-04 16:17:41,540 - INFO - 已停止系统托盘
+2025-10-04 16:17:44,455 - INFO - 显示托盘通知: 程序已最小化 - 双击托盘图标可显示主窗口
+2025-10-04 16:17:44,463 - INFO - 程序已最小化到系统托盘

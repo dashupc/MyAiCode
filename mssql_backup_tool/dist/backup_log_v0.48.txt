@@ -1,0 +1,259 @@
+2025-10-04 17:15:29,142 - INFO - 程序启动（版本V0.48 - 带注册功能）
+2025-10-04 17:15:29,147 - INFO - 日志文件保存路径: D:\MyAiCode\mssql_backup_tool\dist\backup_log_v0.48.txt
+2025-10-04 17:15:29,150 - INFO - 软件未注册，试用期剩余 7 天
+2025-10-04 17:15:29,166 - INFO - 加载图标失败: 未找到图标文件，尝试路径: C:\Users\WIN\AppData\Local\Temp\_MEI229682\icon.ico, C:\Users\WIN\AppData\Local\Temp\_MEI229682\icon_256.png, C:\Users\WIN\AppData\Local\Temp\_MEI229682\icon_128.png
+2025-10-04 17:15:29,176 - INFO - 已创建默认高分辨率图标 (256x256)
+2025-10-04 17:15:29,209 - INFO - 设置窗口图标时出错: 'ICO'
+2025-10-04 17:15:29,211 - INFO - 托盘图标设置完成（高分辨率支持）
+2025-10-04 17:15:29,227 - INFO - 系统托盘初始化成功
+2025-10-04 17:15:29,314 - INFO - 检测到旧版本(v0.47)配置文件，正在加载...
+2025-10-04 17:15:29,319 - INFO - 已强制设置为服务器备份模式
+2025-10-04 17:15:29,327 - INFO - 从配置文件加载了 1 个已选备份数据库: textdata
+2025-10-04 17:15:29,331 - INFO - 配置已加载（版本V0.48）
+2025-10-04 17:15:29,335 - INFO - 已设置每天 09:00 自动备份
+2025-10-04 17:15:29,344 - INFO - 已设置每天 09:30 自动清理服务器备份
+2025-10-04 17:15:29,354 - INFO - 开始异步加载数据库列表...
+2025-10-04 17:15:29,359 - INFO - 定时任务线程已启动
+2025-10-04 17:15:29,366 - INFO - 下次备份时间更新线程已启动
+2025-10-04 17:15:31,423 - INFO - 刷新数据库列表失败: main thread is not in main loop
+2025-10-04 17:15:31,441 - INFO - 计算下次备份时间出错: main thread is not in main loop
+2025-10-04 17:16:26,777 - INFO - 程序启动（版本V0.48 - 带注册功能）
+2025-10-04 17:16:26,785 - INFO - 日志文件保存路径: D:\MyAiCode\mssql_backup_tool\dist\backup_log_v0.48.txt
+2025-10-04 17:16:26,823 - INFO - 软件已注册，功能不受限制
+2025-10-04 17:16:26,842 - INFO - 加载图标失败: 未找到图标文件，尝试路径: C:\Users\WIN\AppData\Local\Temp\_MEI340162\icon.ico, C:\Users\WIN\AppData\Local\Temp\_MEI340162\icon_256.png, C:\Users\WIN\AppData\Local\Temp\_MEI340162\icon_128.png
+2025-10-04 17:16:26,851 - INFO - 已创建默认高分辨率图标 (256x256)
+2025-10-04 17:16:26,884 - INFO - 设置窗口图标时出错: 'ICO'
+2025-10-04 17:16:26,887 - INFO - 托盘图标设置完成（高分辨率支持）
+2025-10-04 17:16:26,900 - INFO - 系统托盘初始化成功
+2025-10-04 17:16:27,021 - INFO - 检测到旧版本(v0.47)配置文件，正在加载...
+2025-10-04 17:16:27,026 - INFO - 已强制设置为服务器备份模式
+2025-10-04 17:16:27,032 - INFO - 从配置文件加载了 1 个已选备份数据库: textdata
+2025-10-04 17:16:27,036 - INFO - 配置已加载（版本V0.48）
+2025-10-04 17:16:27,041 - INFO - 已设置每天 09:00 自动备份
+2025-10-04 17:16:27,046 - INFO - 已设置每天 09:30 自动清理服务器备份
+2025-10-04 17:16:27,054 - INFO - 开始异步加载数据库列表...
+2025-10-04 17:16:27,058 - INFO - 定时任务线程已启动
+2025-10-04 17:16:27,062 - INFO - 下次备份时间更新线程已启动
+2025-10-04 17:16:27,167 - INFO - 正在刷新数据库列表...
+2025-10-04 17:18:21,748 - INFO - 刷新数据库列表失败: ('08001', '[08001] [Microsoft][ODBC Driver 17 for SQL Server]Named Pipes Provider: Could not open a connection to SQL Server [53].  (53) (SQLDriverConnect); [08001] [Microsoft][ODBC Driver 17 for SQL Server]Login timeout expired (0); [08001] [Microsoft][ODBC Driver 17 for SQL Server]Invalid connection string attribute (0); [08001] [Microsoft][ODBC Driver 17 for SQL Server]A network-related or instance-specific error has occurred while establishing a connection to SQL Server. Server is not found or not accessible. Check if instance name is correct and if SQL Server is configured to allow remote connections. For more information see SQL Server Books Online. (53)')
+2025-10-04 17:21:59,450 - INFO - 程序启动（版本V0.48 - 带注册功能）
+2025-10-04 17:21:59,456 - INFO - 日志文件保存路径: D:\MyAiCode\mssql_backup_tool\dist\backup_log_v0.48.txt
+2025-10-04 17:21:59,495 - INFO - 软件已注册，功能不受限制
+2025-10-04 17:21:59,529 - INFO - 成功加载高分辨率图标: C:\Users\WIN\AppData\Local\Temp\_MEI370602\icon.ico (256x256)
+2025-10-04 17:21:59,538 - INFO - 设置窗口图标时出错: 'ICO'
+2025-10-04 17:21:59,541 - INFO - 托盘图标设置完成（高分辨率支持）
+2025-10-04 17:21:59,548 - INFO - 系统托盘初始化成功
+2025-10-04 17:21:59,666 - INFO - 检测到旧版本(v0.47)配置文件，正在加载...
+2025-10-04 17:21:59,678 - INFO - 已强制设置为服务器备份模式
+2025-10-04 17:21:59,684 - INFO - 从配置文件加载了 1 个已选备份数据库: textdata
+2025-10-04 17:21:59,689 - INFO - 配置已加载（版本V0.48）
+2025-10-04 17:21:59,694 - INFO - 已设置每天 09:00 自动备份
+2025-10-04 17:21:59,698 - INFO - 已设置每天 09:30 自动清理服务器备份
+2025-10-04 17:21:59,703 - INFO - 开始异步加载数据库列表...
+2025-10-04 17:21:59,709 - INFO - 定时任务线程已启动
+2025-10-04 17:21:59,713 - INFO - 下次备份时间更新线程已启动
+2025-10-04 17:21:59,824 - INFO - 正在刷新数据库列表...
+2025-10-04 17:23:54,385 - INFO - 刷新数据库列表失败: ('08001', '[08001] [Microsoft][ODBC Driver 17 for SQL Server]Named Pipes Provider: Could not open a connection to SQL Server [53].  (53) (SQLDriverConnect); [08001] [Microsoft][ODBC Driver 17 for SQL Server]Login timeout expired (0); [08001] [Microsoft][ODBC Driver 17 for SQL Server]Invalid connection string attribute (0); [08001] [Microsoft][ODBC Driver 17 for SQL Server]A network-related or instance-specific error has occurred while establishing a connection to SQL Server. Server is not found or not accessible. Check if instance name is correct and if SQL Server is configured to allow remote connections. For more information see SQL Server Books Online. (53)')
+2025-10-04 17:25:42,720 - INFO - 程序启动（版本V0.48 - 带注册功能）
+2025-10-04 17:25:42,727 - INFO - 日志文件保存路径: D:\MyAiCode\mssql_backup_tool\dist\backup_log_v0.48.txt
+2025-10-04 17:25:42,767 - INFO - 软件已注册，功能不受限制
+2025-10-04 17:25:42,805 - INFO - 成功加载高分辨率图标: C:\Users\WIN\AppData\Local\Temp\_MEI332442\icon.ico (256x256)
+2025-10-04 17:25:42,812 - INFO - 设置窗口图标时出错: 'ICO'
+2025-10-04 17:25:42,815 - INFO - 托盘图标设置完成（高分辨率支持）
+2025-10-04 17:25:42,825 - INFO - 系统托盘初始化成功
+2025-10-04 17:25:42,958 - INFO - 检测到旧版本(v0.47)配置文件，正在加载...
+2025-10-04 17:25:42,966 - INFO - 已强制设置为服务器备份模式
+2025-10-04 17:25:42,973 - INFO - 从配置文件加载了 1 个已选备份数据库: textdata
+2025-10-04 17:25:42,977 - INFO - 配置已加载（版本V0.48）
+2025-10-04 17:25:42,990 - INFO - 已设置每天 09:00 自动备份
+2025-10-04 17:25:42,994 - INFO - 已设置每天 09:30 自动清理服务器备份
+2025-10-04 17:25:43,000 - INFO - 开始异步加载数据库列表...
+2025-10-04 17:25:43,007 - INFO - 定时任务线程已启动
+2025-10-04 17:25:43,012 - INFO - 下次备份时间更新线程已启动
+2025-10-04 17:25:43,127 - INFO - 正在刷新数据库列表...
+2025-10-04 17:25:45,975 - INFO - 配置已保存到 D:\MyAiCode\mssql_backup_tool\dist\backup_config_v0.48.json，备份列表中包含 1 个数据库: textdata
+2025-10-04 17:25:48,197 - INFO - 已设置每天 09:00 自动备份
+2025-10-04 17:25:48,200 - INFO - 已设置每天 09:30 自动清理服务器备份
+2025-10-04 17:25:48,210 - INFO - 已停止系统托盘
+2025-10-04 17:25:51,752 - INFO - 配置已保存到 D:\MyAiCode\mssql_backup_tool\dist\backup_config_v0.48.json，备份列表中包含 1 个数据库: textdata
+2025-10-04 17:25:52,901 - INFO - 已设置每天 09:00 自动备份
+2025-10-04 17:25:52,910 - INFO - 已设置每天 09:30 自动清理服务器备份
+2025-10-04 17:25:52,919 - INFO - 已停止系统托盘
+2025-10-04 17:25:55,047 - INFO - 显示托盘通知: 程序已最小化 - 双击托盘图标可显示主窗口
+2025-10-04 17:25:55,054 - INFO - 程序已最小化到系统托盘
+2025-10-04 17:25:56,083 - INFO - 显示托盘通知: 程序已最小化 - 双击托盘图标可显示主窗口
+2025-10-04 17:25:56,086 - INFO - 程序已最小化到系统托盘
+2025-10-04 17:26:04,756 - INFO - 程序启动（版本V0.48 - 带注册功能）
+2025-10-04 17:26:04,764 - INFO - 日志文件保存路径: D:\MyAiCode\mssql_backup_tool\dist\backup_log_v0.48.txt
+2025-10-04 17:26:04,818 - INFO - 软件已注册，功能不受限制
+2025-10-04 17:26:04,855 - INFO - 成功加载高分辨率图标: C:\Users\WIN\AppData\Local\Temp\_MEI270402\icon.ico (256x256)
+2025-10-04 17:26:04,864 - INFO - 设置窗口图标时出错: 'ICO'
+2025-10-04 17:26:04,867 - INFO - 托盘图标设置完成（高分辨率支持）
+2025-10-04 17:26:04,875 - INFO - 系统托盘初始化成功
+2025-10-04 17:26:04,995 - INFO - 已强制设置为服务器备份模式
+2025-10-04 17:26:05,006 - INFO - 从配置文件加载了 1 个已选备份数据库: textdata
+2025-10-04 17:26:05,010 - INFO - 配置已加载（版本V0.48）
+2025-10-04 17:26:05,013 - INFO - 已设置每天 09:00 自动备份
+2025-10-04 17:26:05,020 - INFO - 已设置每天 09:30 自动清理服务器备份
+2025-10-04 17:26:05,025 - INFO - 开始异步加载数据库列表...
+2025-10-04 17:26:05,028 - INFO - 定时任务线程已启动
+2025-10-04 17:26:05,032 - INFO - 下次备份时间更新线程已启动
+2025-10-04 17:26:05,140 - INFO - 正在刷新数据库列表...
+2025-10-04 17:26:11,040 - INFO - 显示托盘通知: 程序已最小化 - 双击托盘图标可显示主窗口
+2025-10-04 17:26:11,043 - INFO - 程序已最小化到系统托盘
+2025-10-04 17:26:15,203 - INFO - 配置已保存到 D:\MyAiCode\mssql_backup_tool\dist\backup_config_v0.48.json，备份列表中包含 1 个数据库: textdata
+2025-10-04 17:26:16,481 - INFO - 已设置每天 09:00 自动备份
+2025-10-04 17:26:16,483 - INFO - 已设置每天 09:30 自动清理服务器备份
+2025-10-04 17:26:16,490 - INFO - 已停止系统托盘
+2025-10-04 17:26:25,025 - INFO - 程序启动（版本V0.48 - 带注册功能）
+2025-10-04 17:26:25,031 - INFO - 日志文件保存路径: D:\MyAiCode\mssql_backup_tool\dist\backup_log_v0.48.txt
+2025-10-04 17:26:25,067 - INFO - 软件已注册，功能不受限制
+2025-10-04 17:26:25,109 - INFO - 成功加载高分辨率图标: C:\Users\WIN\AppData\Local\Temp\_MEI370523\icon.ico (256x256)
+2025-10-04 17:26:25,116 - INFO - 设置窗口图标时出错: 'ICO'
+2025-10-04 17:26:25,120 - INFO - 托盘图标设置完成（高分辨率支持）
+2025-10-04 17:26:25,127 - INFO - 系统托盘初始化成功
+2025-10-04 17:26:25,236 - INFO - 已强制设置为服务器备份模式
+2025-10-04 17:26:25,254 - INFO - 从配置文件加载了 1 个已选备份数据库: textdata
+2025-10-04 17:26:25,263 - INFO - 配置已加载（版本V0.48）
+2025-10-04 17:26:25,275 - INFO - 已设置每天 09:00 自动备份
+2025-10-04 17:26:25,285 - INFO - 已设置每天 09:30 自动清理服务器备份
+2025-10-04 17:26:25,292 - INFO - 开始异步加载数据库列表...
+2025-10-04 17:26:25,295 - INFO - 定时任务线程已启动
+2025-10-04 17:26:25,299 - INFO - 下次备份时间更新线程已启动
+2025-10-04 17:26:25,414 - INFO - 正在刷新数据库列表...
+2025-10-04 17:26:42,311 - INFO - 显示托盘通知: 程序已最小化 - 双击托盘图标可显示主窗口
+2025-10-04 17:26:42,313 - INFO - 程序已最小化到系统托盘
+2025-10-04 17:26:47,167 - INFO - 配置已保存到 D:\MyAiCode\mssql_backup_tool\dist\backup_config_v0.48.json，备份列表中包含 1 个数据库: textdata
+2025-10-04 17:26:48,935 - INFO - 已设置每天 09:00 自动备份
+2025-10-04 17:26:48,937 - INFO - 已设置每天 09:30 自动清理服务器备份
+2025-10-04 17:26:48,941 - INFO - 已停止系统托盘
+2025-10-04 17:26:56,296 - INFO - 程序启动（版本V0.48 - 带注册功能）
+2025-10-04 17:26:56,304 - INFO - 日志文件保存路径: D:\MyAiCode\mssql_backup_tool\dist\backup_log_v0.48.txt
+2025-10-04 17:26:56,333 - INFO - 软件已注册，功能不受限制
+2025-10-04 17:26:56,368 - INFO - 成功加载高分辨率图标: C:\Users\WIN\AppData\Local\Temp\_MEI286202\icon.ico (256x256)
+2025-10-04 17:26:56,381 - INFO - 设置窗口图标时出错: 'ICO'
+2025-10-04 17:26:56,383 - INFO - 托盘图标设置完成（高分辨率支持）
+2025-10-04 17:26:56,394 - INFO - 系统托盘初始化成功
+2025-10-04 17:26:56,511 - INFO - 已强制设置为服务器备份模式
+2025-10-04 17:26:56,515 - INFO - 从配置文件加载了 1 个已选备份数据库: textdata
+2025-10-04 17:26:56,519 - INFO - 配置已加载（版本V0.48）
+2025-10-04 17:26:56,524 - INFO - 已设置每天 09:00 自动备份
+2025-10-04 17:26:56,529 - INFO - 已设置每天 09:30 自动清理服务器备份
+2025-10-04 17:26:56,532 - INFO - 开始异步加载数据库列表...
+2025-10-04 17:26:56,536 - INFO - 定时任务线程已启动
+2025-10-04 17:26:56,539 - INFO - 下次备份时间更新线程已启动
+2025-10-04 17:26:56,649 - INFO - 正在刷新数据库列表...
+2025-10-04 17:27:01,442 - INFO - 显示托盘通知: 程序已最小化 - 双击托盘图标可显示主窗口
+2025-10-04 17:27:01,447 - INFO - 程序已最小化到系统托盘
+2025-10-04 17:27:07,868 - INFO - 程序启动（版本V0.48 - 带注册功能）
+2025-10-04 17:27:07,876 - INFO - 日志文件保存路径: D:\MyAiCode\mssql_backup_tool\dist\backup_log_v0.48.txt
+2025-10-04 17:27:07,914 - INFO - 软件已注册，功能不受限制
+2025-10-04 17:27:07,935 - INFO - 加载图标失败: 未找到图标文件，尝试路径: C:\Users\WIN\AppData\Local\Temp\_MEI312242\icon.ico, C:\Users\WIN\AppData\Local\Temp\_MEI312242\icon_256.png, C:\Users\WIN\AppData\Local\Temp\_MEI312242\icon_128.png
+2025-10-04 17:27:07,945 - INFO - 已创建默认高分辨率图标 (256x256)
+2025-10-04 17:27:07,984 - INFO - 设置窗口图标时出错: 'ICO'
+2025-10-04 17:27:07,987 - INFO - 托盘图标设置完成（高分辨率支持）
+2025-10-04 17:27:07,998 - INFO - 系统托盘初始化成功
+2025-10-04 17:27:08,133 - INFO - 已强制设置为服务器备份模式
+2025-10-04 17:27:08,141 - INFO - 从配置文件加载了 1 个已选备份数据库: textdata
+2025-10-04 17:27:08,144 - INFO - 配置已加载（版本V0.48）
+2025-10-04 17:27:08,148 - INFO - 已设置每天 09:00 自动备份
+2025-10-04 17:27:08,154 - INFO - 已设置每天 09:30 自动清理服务器备份
+2025-10-04 17:27:08,160 - INFO - 开始异步加载数据库列表...
+2025-10-04 17:27:08,165 - INFO - 定时任务线程已启动
+2025-10-04 17:27:08,170 - INFO - 下次备份时间更新线程已启动
+2025-10-04 17:27:08,279 - INFO - 正在刷新数据库列表...
+2025-10-04 17:27:10,784 - INFO - 显示托盘通知: 程序已最小化 - 双击托盘图标可显示主窗口
+2025-10-04 17:27:10,786 - INFO - 程序已最小化到系统托盘
+2025-10-04 17:27:14,982 - INFO - 配置已保存到 D:\MyAiCode\mssql_backup_tool\dist\backup_config_v0.48.json，备份列表中包含 1 个数据库: textdata
+2025-10-04 17:27:16,167 - INFO - 已设置每天 09:00 自动备份
+2025-10-04 17:27:16,170 - INFO - 已设置每天 09:30 自动清理服务器备份
+2025-10-04 17:27:16,179 - INFO - 已停止系统托盘
+2025-10-04 17:27:37,828 - INFO - 刷新数据库列表失败: ('08001', '[08001] [Microsoft][ODBC Driver 17 for SQL Server]Named Pipes Provider: Could not open a connection to SQL Server [53].  (53) (SQLDriverConnect); [08001] [Microsoft][ODBC Driver 17 for SQL Server]Login timeout expired (0); [08001] [Microsoft][ODBC Driver 17 for SQL Server]Invalid connection string attribute (0); [08001] [Microsoft][ODBC Driver 17 for SQL Server]A network-related or instance-specific error has occurred while establishing a connection to SQL Server. Server is not found or not accessible. Check if instance name is correct and if SQL Server is configured to allow remote connections. For more information see SQL Server Books Online. (53)')
+2025-10-04 17:27:37,828 - INFO - 刷新数据库列表失败: ('08001', '[08001] [Microsoft][ODBC Driver 17 for SQL Server]Named Pipes Provider: Could not open a connection to SQL Server [53].  (53) (SQLDriverConnect); [08001] [Microsoft][ODBC Driver 17 for SQL Server]Login timeout expired (0); [08001] [Microsoft][ODBC Driver 17 for SQL Server]Invalid connection string attribute (0); [08001] [Microsoft][ODBC Driver 17 for SQL Server]A network-related or instance-specific error has occurred while establishing a connection to SQL Server. Server is not found or not accessible. Check if instance name is correct and if SQL Server is configured to allow remote connections. For more information see SQL Server Books Online. (53)')
+2025-10-04 17:28:19,840 - INFO - 刷新数据库列表失败: ('08001', '[08001] [Microsoft][ODBC Driver 17 for SQL Server]Named Pipes Provider: Could not open a connection to SQL Server [64].  (64) (SQLDriverConnect); [08001] [Microsoft][ODBC Driver 17 for SQL Server]Login timeout expired (0); [08001] [Microsoft][ODBC Driver 17 for SQL Server]Invalid connection string attribute (0); [08001] [Microsoft][ODBC Driver 17 for SQL Server]A network-related or instance-specific error has occurred while establishing a connection to SQL Server. Server is not found or not accessible. Check if instance name is correct and if SQL Server is configured to allow remote connections. For more information see SQL Server Books Online. (64)')
+2025-10-04 17:28:35,067 - INFO - 刷新数据库列表失败: ('08001', '[08001] [Microsoft][ODBC Driver 17 for SQL Server]Named Pipes Provider: Could not open a connection to SQL Server [53].  (53) (SQLDriverConnect); [08001] [Microsoft][ODBC Driver 17 for SQL Server]Login timeout expired (0); [08001] [Microsoft][ODBC Driver 17 for SQL Server]Invalid connection string attribute (0); [08001] [Microsoft][ODBC Driver 17 for SQL Server]A network-related or instance-specific error has occurred while establishing a connection to SQL Server. Server is not found or not accessible. Check if instance name is correct and if SQL Server is configured to allow remote connections. For more information see SQL Server Books Online. (53)')
+2025-10-04 17:28:35,073 - INFO - 刷新数据库列表失败: ('08001', '[08001] [Microsoft][ODBC Driver 17 for SQL Server]Named Pipes Provider: Could not open a connection to SQL Server [53].  (53) (SQLDriverConnect); [08001] [Microsoft][ODBC Driver 17 for SQL Server]Login timeout expired (0); [08001] [Microsoft][ODBC Driver 17 for SQL Server]Invalid connection string attribute (0); [08001] [Microsoft][ODBC Driver 17 for SQL Server]A network-related or instance-specific error has occurred while establishing a connection to SQL Server. Server is not found or not accessible. Check if instance name is correct and if SQL Server is configured to allow remote connections. For more information see SQL Server Books Online. (53)')
+2025-10-04 17:31:40,994 - INFO - 程序启动（版本V0.48 - 带注册功能）
+2025-10-04 17:31:41,002 - INFO - 日志文件保存路径: D:\MyAiCode\mssql_backup_tool\dist\backup_log_v0.48.txt
+2025-10-04 17:31:41,046 - INFO - 软件已注册，功能不受限制
+2025-10-04 17:31:41,076 - INFO - 加载图标失败: 未找到图标文件，尝试路径: C:\Users\WIN\AppData\Local\Temp\_MEI276042\icon.ico, C:\Users\WIN\AppData\Local\Temp\_MEI276042\icon_256.png, C:\Users\WIN\AppData\Local\Temp\_MEI276042\icon_128.png
+2025-10-04 17:31:41,087 - INFO - 已创建默认高分辨率图标 (256x256)
+2025-10-04 17:31:41,122 - INFO - 设置窗口图标时出错: 'ICO'
+2025-10-04 17:31:41,124 - INFO - 托盘图标设置完成（高分辨率支持）
+2025-10-04 17:31:41,134 - INFO - 系统托盘初始化成功
+2025-10-04 17:31:41,267 - INFO - 已强制设置为服务器备份模式
+2025-10-04 17:31:41,273 - INFO - 从配置文件加载了 1 个已选备份数据库: textdata
+2025-10-04 17:31:41,277 - INFO - 配置已加载（版本V0.48）
+2025-10-04 17:31:41,284 - INFO - 已设置每天 09:00 自动备份
+2025-10-04 17:31:41,291 - INFO - 已设置每天 09:30 自动清理服务器备份
+2025-10-04 17:31:41,296 - INFO - 开始异步加载数据库列表...
+2025-10-04 17:31:41,299 - INFO - 定时任务线程已启动
+2025-10-04 17:31:41,305 - INFO - 下次备份时间更新线程已启动
+2025-10-04 17:31:41,417 - INFO - 正在刷新数据库列表...
+2025-10-04 17:31:57,159 - INFO - 配置已保存到 D:\MyAiCode\mssql_backup_tool\dist\backup_config_v0.48.json，备份列表中包含 1 个数据库: textdata
+2025-10-04 17:31:58,320 - INFO - 已设置每天 09:00 自动备份
+2025-10-04 17:31:58,323 - INFO - 已设置每天 09:30 自动清理服务器备份
+2025-10-04 17:31:58,331 - INFO - 已停止系统托盘
+2025-10-04 17:32:02,330 - INFO - 显示托盘通知: 程序已最小化 - 双击托盘图标可显示主窗口
+2025-10-04 17:32:02,333 - INFO - 程序已最小化到系统托盘
+2025-10-04 17:38:36,565 - INFO - 程序启动（版本V0.48 - 带注册功能）
+2025-10-04 17:38:36,573 - INFO - 日志文件保存路径: D:\MyAiCode\mssql_backup_tool\dist\backup_log_v0.48.txt
+2025-10-04 17:38:36,610 - INFO - 软件已注册，功能不受限制
+2025-10-04 17:38:36,649 - INFO - 成功加载高分辨率图标: C:\Users\WIN\AppData\Local\Temp\_MEI296082\icon.ico (256x256)
+2025-10-04 17:38:36,656 - INFO - 设置窗口图标时出错: 'ICO'
+2025-10-04 17:38:36,658 - INFO - 托盘图标设置完成（高分辨率支持）
+2025-10-04 17:38:36,667 - INFO - 系统托盘初始化成功
+2025-10-04 17:38:36,775 - INFO - 已强制设置为服务器备份模式
+2025-10-04 17:38:36,783 - INFO - 从配置文件加载了 1 个已选备份数据库: textdata
+2025-10-04 17:38:36,788 - INFO - 配置已加载（版本V0.48）
+2025-10-04 17:38:36,792 - INFO - 已设置每天 09:00 自动备份
+2025-10-04 17:38:36,796 - INFO - 已设置每天 09:30 自动清理服务器备份
+2025-10-04 17:38:36,802 - INFO - 开始异步加载数据库列表...
+2025-10-04 17:38:36,805 - INFO - 定时任务线程已启动
+2025-10-04 17:38:36,810 - INFO - 下次备份时间更新线程已启动
+2025-10-04 17:38:36,913 - INFO - 正在刷新数据库列表...
+2025-10-04 17:39:00,781 - INFO - 显示托盘通知: 程序已最小化 - 双击托盘图标可显示主窗口
+2025-10-04 17:39:00,783 - INFO - 程序已最小化到系统托盘
+2025-10-04 17:40:07,022 - INFO - 程序启动（版本V0.48 - 带注册功能）
+2025-10-04 17:40:07,030 - INFO - 日志文件保存路径: D:\MyAiCode\mssql_backup_tool\dist\backup_log_v0.48.txt
+2025-10-04 17:40:07,070 - INFO - 软件已注册，功能不受限制
+2025-10-04 17:40:07,106 - INFO - 成功加载高分辨率图标: C:\Users\WIN\AppData\Local\Temp\_MEI165762\icon.ico (256x256)
+2025-10-04 17:40:07,116 - INFO - 设置窗口图标时出错: 'ICO'
+2025-10-04 17:40:07,118 - INFO - 托盘图标设置完成（高分辨率支持）
+2025-10-04 17:40:07,125 - INFO - 系统托盘初始化成功
+2025-10-04 17:40:07,277 - INFO - 已强制设置为服务器备份模式
+2025-10-04 17:40:07,287 - INFO - 从配置文件加载了 1 个已选备份数据库: textdata
+2025-10-04 17:40:07,291 - INFO - 配置已加载（版本V0.48）
+2025-10-04 17:40:07,295 - INFO - 已设置每天 09:00 自动备份
+2025-10-04 17:40:07,300 - INFO - 已设置每天 09:30 自动清理服务器备份
+2025-10-04 17:40:07,307 - INFO - 开始异步加载数据库列表...
+2025-10-04 17:40:07,310 - INFO - 定时任务线程已启动
+2025-10-04 17:40:07,316 - INFO - 下次备份时间更新线程已启动
+2025-10-04 17:40:07,431 - INFO - 正在刷新数据库列表...
+2025-10-04 17:40:31,472 - INFO - 刷新数据库列表失败: ('08001', '[08001] [Microsoft][ODBC Driver 17 for SQL Server]Named Pipes Provider: Could not open a connection to SQL Server [53].  (53) (SQLDriverConnect); [08001] [Microsoft][ODBC Driver 17 for SQL Server]Login timeout expired (0); [08001] [Microsoft][ODBC Driver 17 for SQL Server]Invalid connection string attribute (0); [08001] [Microsoft][ODBC Driver 17 for SQL Server]A network-related or instance-specific error has occurred while establishing a connection to SQL Server. Server is not found or not accessible. Check if instance name is correct and if SQL Server is configured to allow remote connections. For more information see SQL Server Books Online. (53)')
+2025-10-04 17:40:38,832 - INFO - 显示托盘通知: 程序已最小化 - 双击托盘图标可显示主窗口
+2025-10-04 17:40:38,840 - INFO - 程序已最小化到系统托盘
+2025-10-04 17:40:43,938 - INFO - 配置已保存到 D:\MyAiCode\mssql_backup_tool\dist\backup_config_v0.48.json，备份列表中包含 1 个数据库: textdata
+2025-10-04 17:40:45,397 - INFO - 已设置每天 09:00 自动备份
+2025-10-04 17:40:45,400 - INFO - 已设置每天 09:30 自动清理服务器备份
+2025-10-04 17:40:45,405 - INFO - 已停止系统托盘
+2025-10-04 17:40:49,692 - INFO - 配置已保存到 D:\MyAiCode\mssql_backup_tool\dist\backup_config_v0.48.json，备份列表中包含 1 个数据库: textdata
+2025-10-04 17:40:50,857 - INFO - 已设置每天 09:00 自动备份
+2025-10-04 17:40:50,867 - INFO - 已设置每天 09:30 自动清理服务器备份
+2025-10-04 17:40:50,879 - INFO - 已停止系统托盘
+2025-10-04 17:40:59,245 - INFO - 程序启动（版本V0.48 - 带注册功能）
+2025-10-04 17:40:59,252 - INFO - 日志文件保存路径: D:\MyAiCode\mssql_backup_tool\dist\backup_log_v0.48.txt
+2025-10-04 17:40:59,255 - INFO - 软件未注册，试用期剩余 7 天
+2025-10-04 17:40:59,293 - INFO - 成功加载高分辨率图标: C:\Users\WIN\AppData\Local\Temp\_MEI150802\icon.ico (256x256)
+2025-10-04 17:40:59,300 - INFO - 设置窗口图标时出错: 'ICO'
+2025-10-04 17:40:59,302 - INFO - 托盘图标设置完成（高分辨率支持）
+2025-10-04 17:40:59,313 - INFO - 系统托盘初始化成功
+2025-10-04 17:40:59,436 - INFO - 已强制设置为服务器备份模式
+2025-10-04 17:40:59,443 - INFO - 从配置文件加载了 1 个已选备份数据库: textdata
+2025-10-04 17:40:59,450 - INFO - 配置已加载（版本V0.48）
+2025-10-04 17:40:59,453 - INFO - 已设置每天 09:00 自动备份
+2025-10-04 17:40:59,457 - INFO - 已设置每天 09:30 自动清理服务器备份
+2025-10-04 17:40:59,460 - INFO - 开始异步加载数据库列表...
+2025-10-04 17:40:59,466 - INFO - 定时任务线程已启动
+2025-10-04 17:40:59,472 - INFO - 下次备份时间更新线程已启动
+2025-10-04 17:41:41,010 - INFO - 刷新数据库列表失败: ('08001', '[08001] [Microsoft][ODBC Driver 17 for SQL Server]Named Pipes Provider: Could not open a connection to SQL Server [53].  (53) (SQLDriverConnect); [08001] [Microsoft][ODBC Driver 17 for SQL Server]Login timeout expired (0); [08001] [Microsoft][ODBC Driver 17 for SQL Server]Invalid connection string attribute (0); [08001] [Microsoft][ODBC Driver 17 for SQL Server]A network-related or instance-specific error has occurred while establishing a connection to SQL Server. Server is not found or not accessible. Check if instance name is correct and if SQL Server is configured to allow remote connections. For more information see SQL Server Books Online. (53)')
