@@ -12,6 +12,9 @@ import requests
 import sys
 import json
 import signal
+import webbrowser
+import hashlib
+import wmi  # 用于获取硬件信息
 from urllib.parse import urljoin, urlparse
 import schedule
 from PIL import Image, ImageTk
@@ -28,11 +31,170 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 plt.rcParams["font.family"] = ["SimHei", "WenQuanYi Micro Hei", "Heiti TC"]
 
+# 注册相关常量
+TRIAL_DAYS = 7  # 试用期7天
+REGISTRATION_FILE = os.path.join(os.path.expanduser("~"), ".mssql_backup_tool_reg.dat")
+
+class LicenseManager:
+    """许可证管理类，处理注册和试用期逻辑"""
+    
+    @staticmethod
+    def get_motherboard_serial():
+        """获取主板序列号作为机器码基础"""
+        try:
+            # 使用wmi获取主板信息
+            c = wmi.WMI()
+            for board in c.Win32_BaseBoard():
+                serial = board.SerialNumber
+                if serial and serial.strip() != "":
+                    return serial.strip()
+            
+            # 如果获取失败，使用其他硬件信息生成唯一标识
+            cpu_info = ""
+            for cpu in c.Win32_Processor():
+                cpu_info = cpu.ProcessorId
+            
+            disk_info = ""
+            for disk in c.Win32_DiskDrive():
+                disk_info = disk.SerialNumber
+                break
+                
+            # 组合信息生成唯一标识
+            combined = f"{cpu_info}_{disk_info}"
+            return hashlib.md5(combined.encode()).hexdigest()[:16]
+            
+        except Exception as e:
+            # 作为最后的备选方案，使用系统信息生成
+            system_info = f"{platform.node()}_{platform.machine()}_{platform.processor()}"
+            return hashlib.md5(system_info.encode()).hexdigest()[:16]
+    
+    @staticmethod
+    def generate_machine_code():
+        """生成机器码"""
+        motherboard_serial = LicenseManager.get_motherboard_serial()
+        # 简单加密处理主板序列号生成机器码
+        machine_code = hashlib.sha256(motherboard_serial.encode()).hexdigest()[:20].upper()
+        # 添加分隔符，便于阅读
+        return '-'.join([machine_code[i:i+5] for i in range(0, len(machine_code), 5)])
+    
+    @staticmethod
+    def is_registered():
+        """检查是否已注册"""
+        if not os.path.exists(REGISTRATION_FILE):
+            return False
+            
+        try:
+            with open(REGISTRATION_FILE, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                
+            # 验证注册信息
+            if 'registration_code' not in data:
+                return False
+                
+            # 验证注册码是否匹配当前机器
+            machine_code = LicenseManager.generate_machine_code().replace('-', '')
+            valid = LicenseManager.verify_registration_code(data['registration_code'], machine_code)
+            
+            return valid
+        except:
+            return False
+    
+    @staticmethod
+    def verify_registration_code(reg_code, machine_code):
+        """验证注册码是否有效"""
+        try:
+            # 去除注册码中的分隔符
+            reg_code = reg_code.replace('-', '').upper()
+            
+            # 注册码生成逻辑的反向验证
+            # 实际应用中应该使用更复杂的加密算法
+            hash_obj = hashlib.sha256((machine_code + "LICENSE_KEY").encode())
+            valid_code = hash_obj.hexdigest()[:20].upper()
+            
+            return reg_code == valid_code
+        except:
+            return False
+    
+    @staticmethod
+    def register(reg_code):
+        """注册软件"""
+        machine_code = LicenseManager.generate_machine_code().replace('-', '')
+        
+        if LicenseManager.verify_registration_code(reg_code, machine_code):
+            try:
+                with open(REGISTRATION_FILE, 'w', encoding='utf-8') as f:
+                    json.dump({
+                        'registration_code': reg_code,
+                        'register_time': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    }, f)
+                return True
+            except:
+                return False
+        return False
+    
+    @staticmethod
+    def get_trial_start_date():
+        """获取试用期开始日期"""
+        try:
+            with open(REGISTRATION_FILE, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                return datetime.datetime.strptime(data['trial_start'], "%Y-%m-%d %H:%M:%S")
+        except:
+            # 如果没有记录，设置为今天
+            start_date = datetime.datetime.now()
+            try:
+                with open(REGISTRATION_FILE, 'w', encoding='utf-8') as f:
+                    json.dump({'trial_start': start_date.strftime("%Y-%m-%d %H:%M:%S")}, f)
+            except:
+                pass
+            return start_date
+    
+    @staticmethod
+    def is_trial_expired():
+        """检查试用期是否已过期"""
+        if LicenseManager.is_registered():
+            return False
+            
+        start_date = LicenseManager.get_trial_start_date()
+        today = datetime.datetime.now()
+        days_passed = (today - start_date).days
+        
+        return days_passed >= TRIAL_DAYS
+    
+    @staticmethod
+    def get_remaining_trial_days():
+        """获取剩余试用天数"""
+        if LicenseManager.is_registered():
+            return -1  # 已注册
+            
+        if LicenseManager.is_trial_expired():
+            return 0
+            
+        start_date = LicenseManager.get_trial_start_date()
+        today = datetime.datetime.now()
+        days_passed = (today - start_date).days
+        
+        return TRIAL_DAYS - days_passed
+    
+    @staticmethod
+    def remove_registration():
+        """移除注册信息"""
+        if os.path.exists(REGISTRATION_FILE):
+            try:
+                os.remove(REGISTRATION_FILE)
+                return True
+            except:
+                return False
+        return True
+
 class MSSQLBackupTool:
     def __init__(self, root, silent_mode=False):
+        # 检查试用期或注册状态
+        self.check_license_status()
+        
         self.root = root
         self.silent_mode = silent_mode
-        self.root.title("MSSQL数据库备份工具 - V0.45（滚动优化版）")
+        self.root.title("MSSQL数据库备份工具 - V0.48（带注册功能）")
         self.root.geometry("1000x700")
         
         # 确保主线程退出时能正常关闭
@@ -73,6 +235,10 @@ class MSSQLBackupTool:
         self.last_click_time = 0  # 用于检测双击的时间戳
         self.double_click_threshold = 0.3  # 双击时间阈值（秒）
         
+        # 联系方式信息
+        self.contact_qq = "88179096"
+        self.contact_url = "www.itvip.com.cn"
+        
         # 字体设置
         self.style = ttk.Style()
         self.style.configure("TLabel", font=("SimHei", 10))
@@ -86,7 +252,7 @@ class MSSQLBackupTool:
         # 初始化日志（修复权限问题）
         self.setup_logging()
         
-        # 设置窗口图标和托盘图标（使用打包的icon.ico）
+        # 设置窗口图标和托盘图标（使用高分辨率图标）
         self.set_icons()
         
         # 窗口居中
@@ -114,10 +280,189 @@ class MSSQLBackupTool:
         # 启动托盘消息处理线程
         self.start_tray_message_processor()
         
+        # 显示试用期提示
+        self.show_trial_notification()
+        
         # 如果是静默模式，最小化到托盘
-        if self.silent_mode:
+        if self.silent_mode and not LicenseManager.is_trial_expired():
             self.log("程序以静默模式启动，最小化到系统托盘")
             self.minimize_to_system_tray()
+
+    def check_license_status(self):
+        """检查许可证状态，如果试用期已过且未注册则退出"""
+        if LicenseManager.is_trial_expired() and not LicenseManager.is_registered():
+            # 创建一个简单的Tk窗口显示注册提示
+            root = tk.Tk()
+            root.title("软件未注册")
+            root.geometry("400x300")
+            root.resizable(False, False)
+            root.configure(bg="#f0f0f0")
+            
+            # 居中显示
+            root.update_idletasks()
+            width = root.winfo_width()
+            height = root.winfo_height()
+            x = (root.winfo_screenwidth() // 2) - (width // 2)
+            y = (root.winfo_screenheight() // 2) - (height // 2)
+            root.geometry('{}x{}+{}+{}'.format(width, height, x, y))
+            
+            frame = ttk.Frame(root, padding=20)
+            frame.pack(fill=tk.BOTH, expand=True)
+            
+            ttk.Label(
+                frame, 
+                text="试用期已结束", 
+                font=("SimHei", 16, "bold")
+            ).pack(pady=10)
+            
+            ttk.Label(
+                frame, 
+                text="请注册后继续使用本软件", 
+                font=("SimHei", 12)
+            ).pack(pady=10)
+            
+            machine_code = LicenseManager.generate_machine_code()
+            code_frame = ttk.Frame(frame)
+            code_frame.pack(fill=tk.X, pady=10)
+            
+            ttk.Label(code_frame, text="机器码:", font=("SimHei", 10)).pack(side=tk.LEFT)
+            code_label = ttk.Label(
+                code_frame, 
+                text=machine_code, 
+                font=("SimHei", 10, "bold"),
+                foreground="#0000FF"
+            )
+            code_label.pack(side=tk.LEFT, padx=5)
+            code_label.bind("<Button-1>", lambda e: self.copy_to_clipboard(machine_code, root))
+            
+            btn_frame = ttk.Frame(frame)
+            btn_frame.pack(fill=tk.X, pady=20)
+            
+            ttk.Button(
+                btn_frame, 
+                text="注册", 
+                command=lambda: self.show_registration_dialog(root)
+            ).pack(side=tk.LEFT, padx=5)
+            
+            ttk.Button(
+                btn_frame, 
+                text="退出", 
+                command=root.quit
+            ).pack(side=tk.RIGHT, padx=5)
+            
+            root.mainloop()
+            sys.exit(0)
+    
+    def show_trial_notification(self):
+        """显示试用期通知"""
+        remaining_days = LicenseManager.get_remaining_trial_days()
+        if remaining_days > 0:
+            messagebox.showinfo(
+                "试用期提示", 
+                f"您正在使用试用版，剩余试用期 {remaining_days} 天。\n"
+                f"试用期结束后需要注册才能继续使用。\n"
+                f"请在\"关于\"页面查看机器码并获取注册码。"
+            )
+    
+    def copy_to_clipboard(self, text, root=None):
+        """复制文本到剪贴板"""
+        if root:
+            root.clipboard_clear()
+            root.clipboard_append(text)
+            root.update()
+        else:
+            self.root.clipboard_clear()
+            self.root.clipboard_append(text)
+            self.root.update()
+        messagebox.showinfo("提示", "已复制到剪贴板")
+    
+    def show_registration_dialog(self, parent=None):
+        """显示注册对话框"""
+        if parent is None:
+            parent = self.root
+            
+        dialog = tk.Toplevel(parent)
+        dialog.title("软件注册")
+        dialog.geometry("450x300")
+        dialog.resizable(False, False)
+        dialog.transient(parent)
+        dialog.grab_set()
+        
+        # 居中显示
+        dialog.update_idletasks()
+        width = dialog.winfo_width()
+        height = dialog.winfo_height()
+        x = parent.winfo_x() + (parent.winfo_width() // 2) - (width // 2)
+        y = parent.winfo_y() + (parent.winfo_height() // 2) - (height // 2)
+        dialog.geometry('{}x{}+{}+{}'.format(width, height, x, y))
+        
+        frame = ttk.Frame(dialog, padding=20)
+        frame.pack(fill=tk.BOTH, expand=True)
+        
+        ttk.Label(
+            frame, 
+            text="请输入注册码", 
+            font=("SimHei", 14, "bold")
+        ).pack(pady=10)
+        
+        # 显示机器码
+        machine_code = LicenseManager.generate_machine_code()
+        code_frame = ttk.Frame(frame)
+        code_frame.pack(fill=tk.X, pady=5)
+        
+        ttk.Label(code_frame, text="机器码:", font=("SimHei", 10)).pack(side=tk.LEFT)
+        code_label = ttk.Label(
+            code_frame, 
+            text=machine_code, 
+            font=("SimHei", 10),
+            foreground="#0000FF",
+            cursor="hand2"
+        )
+        code_label.pack(side=tk.LEFT, padx=5)
+        code_label.bind("<Button-1>", lambda e: self.copy_to_clipboard(machine_code, dialog))
+        
+        # 注册码输入框
+        reg_frame = ttk.Frame(frame)
+        reg_frame.pack(fill=tk.X, pady=10)
+        
+        ttk.Label(reg_frame, text="注册码:", font=("SimHei", 10)).pack(side=tk.LEFT)
+        self.reg_code_entry = ttk.Entry(reg_frame, width=35, font=("SimHei", 10))
+        self.reg_code_entry.pack(side=tk.LEFT, padx=5, fill=tk.X, expand=True)
+        
+        # 按钮
+        btn_frame = ttk.Frame(frame)
+        btn_frame.pack(fill=tk.X, pady=20)
+        
+        ttk.Button(
+            btn_frame, 
+            text="确定", 
+            command=lambda: self.process_registration(dialog)
+        ).pack(side=tk.LEFT, padx=5)
+        
+        ttk.Button(
+            btn_frame, 
+            text="取消", 
+            command=dialog.destroy
+        ).pack(side=tk.RIGHT, padx=5)
+        
+        dialog.wait_window()
+    
+    def process_registration(self, dialog):
+        """处理注册逻辑"""
+        reg_code = self.reg_code_entry.get().strip()
+        
+        if not reg_code:
+            messagebox.showerror("错误", "请输入注册码")
+            return
+            
+        if LicenseManager.register(reg_code):
+            messagebox.showinfo("成功", "注册成功！软件将重启以应用更改。")
+            dialog.destroy()
+            self.root.destroy()
+            # 重启应用
+            os.execv(sys.executable, [sys.executable] + sys.argv)
+        else:
+            messagebox.showerror("错误", "注册码无效，请检查注册码是否正确")
 
     def register_signal_handlers(self):
         def handle_interrupt(signum, frame):
@@ -136,7 +481,7 @@ class MSSQLBackupTool:
         self.root.geometry('{}x{}+{}+{}'.format(width, height, x, y))
 
     def set_icons(self):
-        """设置窗口图标和托盘图标，使用打包的icon.ico"""
+        """设置窗口图标和托盘图标，使用高分辨率图标并支持多种尺寸"""
         try:
             self.common_icon = None  # 统一的图标对象
             self.temp_icon_path = None  # 临时图标路径
@@ -149,26 +494,62 @@ class MSSQLBackupTool:
                 else:
                     base_path = os.path.dirname(os.path.abspath(__file__))
                 
-                self.icon_path = os.path.join(base_path, "icon.ico")
+                # 尝试加载高分辨率图标
+                icon_paths = [
+                    os.path.join(base_path, "icon.ico"),  # 首选高分辨率ICO
+                    os.path.join(base_path, "icon_256.png"),  # 备选高分辨率PNG
+                    os.path.join(base_path, "icon_128.png")   # 备选中等分辨率PNG
+                ]
                 
-                if os.path.exists(self.icon_path) and os.path.isfile(self.icon_path):
-                    # 加载打包的图标作为统一图标源
-                    self.common_icon = Image.open(self.icon_path)
-                    self.log(f"成功加载图标: {self.icon_path}")
+                # 查找可用的图标文件
+                found_icon = None
+                for path in icon_paths:
+                    if os.path.exists(path) and os.path.isfile(path):
+                        found_icon = path
+                        break
+                
+                if found_icon:
+                    # 加载图标并确保是高分辨率版本
+                    self.common_icon = Image.open(found_icon)
+                    
+                    # 确保图标有足够的分辨率（至少128x128）
+                    if self.common_icon.size[0] < 128 or self.common_icon.size[1] < 128:
+                        self.log(f"警告: 图标分辨率较低 ({self.common_icon.size[0]}x{self.common_icon.size[1]})，建议使用至少128x128像素的图标")
+                    else:
+                        self.log(f"成功加载高分辨率图标: {found_icon} ({self.common_icon.size[0]}x{self.common_icon.size[1]})")
                 else:
-                    raise FileNotFoundError(f"图标文件 {self.icon_path} 不存在")
+                    raise FileNotFoundError(f"未找到图标文件，尝试路径: {', '.join(icon_paths)}")
                     
             except Exception as e:
                 self.log(f"加载图标失败: {str(e)}")
-                # 不再生成默认图标，仅使用系统默认图标
-                self.common_icon = None
+                # 创建默认图标作为最后的备选方案
+                self.common_icon = self.create_default_icon()
                 
             # 为窗口和托盘设置图标
             if self.common_icon:
-                # 创建临时ICO文件用于窗口图标
+                # 创建临时ICO文件用于窗口图标，确保包含多种尺寸
                 try:
+                    # 创建包含多种尺寸的ICO文件
                     temp_icon = tempfile.NamedTemporaryFile(suffix='.ico', delete=False)
-                    self.common_icon.save(temp_icon, format='ICO')
+                    
+                    # 准备不同尺寸的图标（16x16, 32x32, 48x48, 64x64, 128x128, 256x256）
+                    sizes = [(16,16), (32,32), (48,48), (64,64), (128,128)]
+                    if self.common_icon.size[0] >= 256 and self.common_icon.size[1] >= 256:
+                        sizes.append((256,256))
+                    
+                    # 创建不同尺寸的图标并保存为ICO
+                    icons = []
+                    for size in sizes:
+                        icon = self.common_icon.resize(size, Image.Resampling.LANCZOS)  # 使用高质量缩放
+                        icons.append(icon)
+                    
+                    # 保存多尺寸ICO
+                    icons[0].save(
+                        temp_icon,
+                        format='ICO',
+                        append_images=icons[1:],
+                        save_all=True
+                    )
                     temp_icon.close()
                     self.temp_icon_path = temp_icon.name
                     
@@ -176,13 +557,13 @@ class MSSQLBackupTool:
                     self.root.iconbitmap(self.temp_icon_path)
                     self.window_icon = ImageTk.PhotoImage(file=self.temp_icon_path)
                     self.root.iconphoto(True, self.window_icon)
-                    self.log("窗口图标设置完成")
+                    self.log("窗口图标设置完成（多分辨率支持）")
                 except Exception as e:
                     self.log(f"设置窗口图标时出错: {str(e)}")
                 
-                # 设置托盘图标（直接使用PIL Image对象）
+                # 设置托盘图标（使用原始高分辨率图像）
                 self.tray_image = self.common_icon
-                self.log("托盘图标设置完成")
+                self.log("托盘图标设置完成（高分辨率支持）")
             
             # 初始化系统托盘
             self.init_tray_icon()
@@ -190,8 +571,42 @@ class MSSQLBackupTool:
         except Exception as e:
             self.log(f"设置图标过程出错: {str(e)}")
 
+    def create_default_icon(self):
+        """创建一个简单的默认图标，当没有找到图标文件时使用"""
+        try:
+            # 创建256x256的高分辨率图标
+            icon = Image.new('RGB', (256, 256), color='blue')
+            
+            # 在图标上绘制简单的数据库符号
+            from PIL import ImageDraw, ImageFont
+            
+            draw = ImageDraw.Draw(icon)
+            
+            # 绘制数据库符号（简单的立方体）
+            # 前面
+            draw.rectangle([64, 64, 192, 192], fill="#2a7fff")
+            # 顶部
+            draw.polygon([64, 64, 128, 32, 192, 64, 128, 96], fill="#1a66cc")
+            # 侧面
+            draw.polygon([192, 64, 224, 128, 192, 192, 128, 192], fill="#0d47a1")
+            
+            # 添加文字标识
+            try:
+                # 尝试使用系统字体
+                font = ImageFont.truetype("arial.ttf", 32)
+                draw.text((80, 100), "DB", font=font, fill="white")
+            except:
+                # 字体不可用时使用默认字体
+                draw.text((80, 100), "DB", fill="white")
+                
+            self.log("已创建默认高分辨率图标 (256x256)")
+            return icon
+        except Exception as e:
+            self.log(f"创建默认图标失败: {str(e)}")
+            return None
+
     def init_tray_icon(self):
-        """使用pystray初始化系统托盘，使用打包的图标"""
+        """使用pystray初始化系统托盘，使用高分辨率图标"""
         if not self.tray_image and self.common_icon is None:
             self.log("没有可用图标，使用系统默认图标初始化托盘")
             # 使用系统默认图标
@@ -205,13 +620,15 @@ class MSSQLBackupTool:
                 item('显示窗口', self.tray_action_show_window),
                 item('立即备份', self.tray_action_start_backup),
                 item('查看日志', self.tray_action_show_log),
+                item('注册', self.tray_action_register),  # 注册菜单项
+                item('关于', self.tray_action_about),
                 item('退出', self.tray_action_quit)
             )
             
             # 创建托盘图标，添加双击事件处理
             self.tray_icon = pystray.Icon(
                 "mssql_backup_tool",
-                self.tray_image,  # 使用打包的图标
+                self.tray_image,  # 使用高分辨率图标
                 "MSSQL数据库备份工具",
                 menu
             )
@@ -274,6 +691,10 @@ class MSSQLBackupTool:
                         self.root.after(0, self.manual_server_cleanup)
                     elif action == "show_log":
                         self.root.after(0, self.show_log)
+                    elif action == "register":  # 注册操作
+                        self.root.after(0, self.show_registration_dialog)
+                    elif action == "about":
+                        self.root.after(0, self.show_about_dialog)
                     elif action == "quit":
                         self.root.after(0, lambda: self.quit_application(force=True))
                     self.tray_queue.task_done()
@@ -300,6 +721,12 @@ class MSSQLBackupTool:
 
     def tray_action_show_log(self, icon=None, item=None):
         self.tray_queue.put("show_log")
+
+    def tray_action_register(self, icon=None, item=None):  # 注册动作
+        self.tray_queue.put("register")
+
+    def tray_action_about(self, icon=None, item=None):
+        self.tray_queue.put("about")
 
     def tray_action_quit(self, icon=None, item=None):
         self.tray_queue.put("quit")
@@ -385,7 +812,7 @@ class MSSQLBackupTool:
                 os.makedirs(log_dir, exist_ok=True)
             
             # 日志文件路径
-            log_file = os.path.join(log_dir, 'backup_log_v0.45.txt')
+            log_file = os.path.join(log_dir, 'backup_log_v0.48.txt')
             
             # 配置日志
             logging.basicConfig(
@@ -396,8 +823,15 @@ class MSSQLBackupTool:
             )
             
             # 记录日志文件路径，方便用户查找
-            self.log(f"程序启动（版本V0.45 - 滚动优化版）")
+            self.log(f"程序启动（版本V0.48 - 带注册功能）")
             self.log(f"日志文件保存路径: {log_file}")
+            
+            # 记录注册状态
+            if LicenseManager.is_registered():
+                self.log("软件已注册，功能不受限制")
+            else:
+                remaining_days = LicenseManager.get_remaining_trial_days()
+                self.log(f"软件未注册，试用期剩余 {remaining_days} 天")
             
         except Exception as e:
             # 最后的日志错误处理
@@ -412,6 +846,7 @@ class MSSQLBackupTool:
         # 标签页控件
         tab_control = ttk.Notebook(main_frame)
         
+        # 先添加其他标签页
         self.monitor_tab = ttk.Frame(tab_control)
         self.config_tab = ttk.Frame(tab_control)
         self.log_tab = ttk.Frame(tab_control)
@@ -419,6 +854,11 @@ class MSSQLBackupTool:
         tab_control.add(self.monitor_tab, text="监控")
         tab_control.add(self.config_tab, text="配置")
         tab_control.add(self.log_tab, text="日志")
+        
+        # 最后添加"关于"标签页，确保它在最后位置
+        self.about_tab = ttk.Frame(tab_control)
+        tab_control.add(self.about_tab, text="关于")
+        self.create_about_tab()
         
         tab_control.pack(expand=1, fill="both")
         
@@ -588,8 +1028,6 @@ class MSSQLBackupTool:
         backup_frame = ttk.LabelFrame(config_frame, text="备份设置（备份流程: 先备份到服务器，再下载到本地）", padding="8")
         backup_frame.pack(fill=tk.X, pady=4)
         
-        # 移除备份模式选择，直接使用"先服务器再下载"模式
-        
         ttk.Label(backup_frame, text="服务器IIS路径:").grid(row=1, column=0, sticky=tk.W, pady=3, padx=3)
         self.server_temp_path_entry = ttk.Entry(backup_frame, width=35)
         self.server_temp_path_entry.grid(row=1, column=1, sticky=tk.W, pady=3, padx=3)
@@ -754,7 +1192,145 @@ class MSSQLBackupTool:
         ttk.Button(button_frame, text="测试Web连接", command=self.test_web_connection).pack(side=tk.LEFT, padx=3)
         ttk.Button(button_frame, text="保存配置", command=self.save_config).pack(side=tk.LEFT, padx=3)
         ttk.Button(button_frame, text="测试数据库连接", command=self.test_connection).pack(side=tk.LEFT, padx=3)
+        ttk.Button(button_frame, text="注册", command=self.show_registration_dialog).pack(side=tk.RIGHT, padx=3)  # 注册按钮
+        ttk.Button(button_frame, text="关于", command=self.show_about_dialog).pack(side=tk.RIGHT, padx=3)
         ttk.Button(button_frame, text="退出", command=lambda: self.quit_application(force=True)).pack(side=tk.RIGHT, padx=3)
+
+        # 在配置页面底部添加联系方式信息
+        contact_frame = ttk.Frame(config_frame, padding="10")
+        contact_frame.pack(fill=tk.X, pady=10)
+        
+        contact_label = ttk.Label(
+            contact_frame, 
+            text=f"技术支持: QQ {self.contact_qq} | 官网: {self.contact_url}",
+            foreground="#0000FF",  # 蓝色文字，模拟链接样式
+            cursor="hand2"  # 鼠标悬停时显示手型指针
+        )
+        contact_label.pack()
+        contact_label.bind("<Button-1>", lambda e: self.open_contact_url())  # 点击打开网址
+
+    def create_about_tab(self):
+        """创建关于标签页，显示软件信息、注册状态和联系方式"""
+        about_frame = ttk.Frame(self.about_tab, padding="20")
+        about_frame.pack(fill=tk.BOTH, expand=True)
+        
+        # 软件标题
+        ttk.Label(
+            about_frame, 
+            text="MSSQL数据库备份工具", 
+            font=("SimHei", 16, "bold")
+        ).pack(pady=10)
+        
+        # 版本信息
+        ttk.Label(
+            about_frame, 
+            text=f"版本: V0.48", 
+            font=("SimHei", 12)
+        ).pack(pady=5)
+        
+        # 注册状态
+        reg_status_frame = ttk.Frame(about_frame)
+        reg_status_frame.pack(pady=10)
+        
+        if LicenseManager.is_registered():
+            ttk.Label(
+                reg_status_frame, 
+                text="注册状态: ", 
+                font=("SimHei", 10, "bold")
+            ).pack(side=tk.LEFT)
+            ttk.Label(
+                reg_status_frame, 
+                text="已注册", 
+                font=("SimHei", 10, "bold"),
+                foreground="green"
+            ).pack(side=tk.LEFT)
+        else:
+            remaining_days = LicenseManager.get_remaining_trial_days()
+            ttk.Label(
+                reg_status_frame, 
+                text="注册状态: ", 
+                font=("SimHei", 10, "bold")
+            ).pack(side=tk.LEFT)
+            ttk.Label(
+                reg_status_frame, 
+                text=f"试用中 (剩余 {remaining_days} 天)", 
+                font=("SimHei", 10, "bold"),
+                foreground="orange"
+            ).pack(side=tk.LEFT)
+            ttk.Button(
+                reg_status_frame, 
+                text="立即注册", 
+                command=self.show_registration_dialog
+            ).pack(side=tk.LEFT, padx=10)
+        
+        # 机器码信息（仅在未注册时显示）
+        if not LicenseManager.is_registered():
+            machine_code = LicenseManager.generate_machine_code()
+            code_frame = ttk.Frame(about_frame)
+            code_frame.pack(fill=tk.X, pady=10, padx=20)
+            
+            ttk.Label(code_frame, text="机器码:", font=("SimHei", 10)).pack(side=tk.LEFT)
+            code_label = ttk.Label(
+                code_frame, 
+                text=machine_code,
+                font=("SimHei", 10),
+                foreground="#0000FF",
+                cursor="hand2"
+            )
+            code_label.pack(side=tk.LEFT, padx=5)
+            code_label.bind("<Button-1>", lambda e: self.copy_to_clipboard(machine_code))
+        
+        # 功能描述
+        ttk.Label(
+            about_frame, 
+            text="本工具用于自动备份MSSQL数据库，支持定时备份、自动清理等功能。", 
+            font=("SimHei", 10)
+        ).pack(pady=10, padx=20, anchor=tk.W)
+        
+        # 分隔线
+        ttk.Separator(about_frame, orient="horizontal").pack(fill=tk.X, pady=10, padx=20)
+        
+        # 联系方式
+        ttk.Label(
+            about_frame, 
+            text="技术支持:", 
+            font=("SimHei", 10, "bold")
+        ).pack(pady=5, anchor=tk.W, padx=20)
+        
+        # QQ联系方式
+        qq_frame = ttk.Frame(about_frame)
+        qq_frame.pack(fill=tk.X, pady=2, padx=20, anchor=tk.W)
+        ttk.Label(qq_frame, text="QQ: ", font=("SimHei", 10)).pack(side=tk.LEFT)
+        qq_label = ttk.Label(
+            qq_frame, 
+            text=self.contact_qq,
+            font=("SimHei", 10),
+            foreground="#0000FF",
+            cursor="hand2"
+        )
+        qq_label.pack(side=tk.LEFT)
+        qq_label.bind("<Button-1>", lambda e: self.copy_to_clipboard(self.contact_qq))
+        
+        # 网址链接
+        url_frame = ttk.Frame(about_frame)
+        url_frame.pack(fill=tk.X, pady=2, padx=20, anchor=tk.W)
+        ttk.Label(url_frame, text="官网: ", font=("SimHei", 10)).pack(side=tk.LEFT)
+        url_label = ttk.Label(
+            url_frame, 
+            text=self.contact_url,
+            font=("SimHei", 10),
+            foreground="#0000FF",
+            cursor="hand2"
+        )
+        url_label.pack(side=tk.LEFT)
+        url_label.bind("<Button-1>", lambda e: self.open_contact_url())
+        
+        # 底部版权信息
+        ttk.Label(
+            about_frame, 
+            text="© 2025 版权所有", 
+            font=("SimHei", 9)
+        ).pack(side=tk.BOTTOM, pady=20)
 
     def create_log_tab(self):
         log_frame = ttk.Frame(self.log_tab, padding="10")
@@ -766,7 +1342,7 @@ class MSSQLBackupTool:
         ttk.Button(log_control_frame, text="清空日志", command=self.clear_log).pack(side=tk.RIGHT, padx=5)
         ttk.Button(log_control_frame, text="导出日志", command=self.export_log).pack(side=tk.RIGHT, padx=5)
         
-        log_display_frame = ttk.LabelFrame(log_frame, text="操作日志（版本V0.45 - 滚动优化版）", padding="10")
+        log_display_frame = ttk.LabelFrame(log_frame, text="操作日志（版本V0.48 - 带注册功能）", padding="10")
         log_display_frame.pack(fill=tk.BOTH, expand=True, pady=5)
         
         self.log_text = tk.Text(log_display_frame, height=25, wrap=tk.WORD)
@@ -789,7 +1365,7 @@ class MSSQLBackupTool:
         monitor_frame.pack(fill=tk.BOTH, expand=True)
         
         # 系统状态区域 - 分为两列显示
-        status_frame = ttk.LabelFrame(monitor_frame, text="系统状态（版本V0.45 - 滚动优化版）", padding="10")
+        status_frame = ttk.LabelFrame(monitor_frame, text="系统状态（版本V0.48 - 带注册功能）", padding="10")
         status_frame.pack(fill=tk.X, pady=5)
         
         # 创建两列布局
@@ -816,6 +1392,19 @@ class MSSQLBackupTool:
         ttk.Label(col1, text="自动备份状态:").grid(row=2, column=0, sticky=tk.W, pady=5, padx=5)
         self.auto_backup_status_label = ttk.Label(col1, text="未启用", foreground="orange")
         self.auto_backup_status_label.grid(row=2, column=1, sticky=tk.W, pady=5)
+        
+        # 新增：注册状态
+        ttk.Label(col1, text="注册状态:").grid(row=3, column=0, sticky=tk.W, pady=5, padx=5)
+        if LicenseManager.is_registered():
+            self.reg_status_label = ttk.Label(col1, text="已注册", foreground="green")
+        else:
+            remaining_days = LicenseManager.get_remaining_trial_days()
+            self.reg_status_label = ttk.Label(
+                col1, 
+                text=f"试用中 (剩余 {remaining_days} 天)", 
+                foreground="orange"
+            )
+        self.reg_status_label.grid(row=3, column=1, sticky=tk.W, pady=5)
         
         # 第二列内容
         ttk.Label(col2, text="下次自动备份时间:").grid(row=0, column=0, sticky=tk.W, pady=5, padx=5)
@@ -900,6 +1489,18 @@ class MSSQLBackupTool:
         # 启动状态更新
         self.update_status()
 
+    # 联系方式相关方法
+    def open_contact_url(self):
+        """打开联系网址"""
+        try:
+            # 确保网址有正确的协议前缀
+            url = self.contact_url if self.contact_url.startswith(('http://', 'https://')) else f'http://{self.contact_url}'
+            webbrowser.open(url)
+            self.log(f"已打开网址: {url}")
+        except Exception as e:
+            self.log(f"打开网址失败: {str(e)}")
+            messagebox.showerror("错误", f"无法打开网址: {str(e)}")
+
     def update_status(self):
         """更新状态显示"""
         # 更新服务器清理状态
@@ -914,6 +1515,16 @@ class MSSQLBackupTool:
         # 更新清理统计
         self.local_cleaned_count_label.config(text=str(self.today_local_cleaned_count))
         self.server_cleaned_count_label.config(text=str(self.today_server_cleaned_count))
+        
+        # 更新注册状态
+        if LicenseManager.is_registered():
+            self.reg_status_label.config(text="已注册", foreground="green")
+        else:
+            remaining_days = LicenseManager.get_remaining_trial_days()
+            self.reg_status_label.config(
+                text=f"试用中 (剩余 {remaining_days} 天)", 
+                foreground="orange"
+            )
             
         # 定期检查并更新状态
         self.root.after(5000, self.update_status)
@@ -1003,9 +1614,9 @@ class MSSQLBackupTool:
                         break
                 else:
                     # 如果找不到日志文件路径，使用默认路径
-                    log_file_path = os.path.join(os.path.expanduser("~"), "Documents", "MSSQLBackupTool", 'backup_log_v0.45.txt')
+                    log_file_path = os.path.join(os.path.expanduser("~"), "Documents", "MSSQLBackupTool", 'backup_log_v0.48.txt')
             else:
-                log_file_path = os.path.join(os.path.expanduser("~"), "Documents", "MSSQLBackupTool", 'backup_log_v0.45.txt')
+                log_file_path = os.path.join(os.path.expanduser("~"), "Documents", "MSSQLBackupTool", 'backup_log_v0.48.txt')
             
             # 尝试直接读取日志文件
             try:
@@ -1018,7 +1629,7 @@ class MSSQLBackupTool:
                 self.log_text.config(state=tk.DISABLED)
             
             timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-            default_filename = f"backup_log_export_{timestamp}_V0.45.txt"
+            default_filename = f"backup_log_export_{timestamp}_V0.48.txt"
             file_path = filedialog.asksaveasfilename(
                 defaultextension=".txt",
                 filetypes=[("文本文件", "*.txt"), ("所有文件", "*.*")],
@@ -1047,9 +1658,9 @@ class MSSQLBackupTool:
                         break
                 else:
                     # 如果找不到日志文件路径，使用默认路径
-                    log_file = os.path.join(os.path.expanduser("~"), "Documents", "MSSQLBackupTool", 'backup_log_v0.45.txt')
+                    log_file = os.path.join(os.path.expanduser("~"), "Documents", "MSSQLBackupTool", 'backup_log_v0.48.txt')
             else:
-                log_file = os.path.join(os.path.expanduser("~"), "Documents", "MSSQLBackupTool", 'backup_log_v0.45.txt')
+                log_file = os.path.join(os.path.expanduser("~"), "Documents", "MSSQLBackupTool", 'backup_log_v0.48.txt')
             
             if os.path.exists(log_file):
                 with open(log_file, 'r', encoding='utf-8') as f:
@@ -1060,7 +1671,7 @@ class MSSQLBackupTool:
                         self.log_text.insert(tk.END, line)
                     self.log_text.see(tk.END)
                     self.log_text.config(state=tk.DISABLED)
-                self.log(f"已加载最近的日志记录（版本V0.45），日志文件路径：{log_file}")
+                self.log(f"已加载最近的日志记录（版本V0.48），日志文件路径：{log_file}")
         except Exception as e:
             self.log(f"加载历史日志失败: {str(e)}")
 
@@ -1226,7 +1837,7 @@ class MSSQLBackupTool:
             os.makedirs(log_dir, exist_ok=True)
             
             config = {
-                'version': 'V0.45',
+                'version': 'V0.48',
                 'server': self.server_entry.get(),
                 'user': self.user_entry.get(),
                 'password': self.password_entry.get(),
@@ -1247,7 +1858,7 @@ class MSSQLBackupTool:
                 'minimize_to_tray': self.minimize_to_tray.get()
             }
             
-            config_file = os.path.join(log_dir, 'backup_config_v0.45.json')
+            config_file = os.path.join(log_dir, 'backup_config_v0.48.json')
             with open(config_file, 'w', encoding='utf-8') as f:
                 json.dump(config, f, ensure_ascii=False, indent=4)
             
@@ -1276,13 +1887,13 @@ class MSSQLBackupTool:
                 for handler in root_logger.handlers:
                     if isinstance(handler, logging.FileHandler):
                         log_dir = os.path.dirname(handler.baseFilename)
-                        config_file = os.path.join(log_dir, 'backup_config_v0.45.json')
+                        config_file = os.path.join(log_dir, 'backup_config_v0.48.json')
                         break
             
             # 如果日志目录中没有配置文件，检查默认位置
             if not config_file or not os.path.exists(config_file):
                 # 检查旧版本配置文件
-                for old_version in ['v0.44', 'v0.43', 'v0.42', 'v0.41']:
+                for old_version in ['v0.47', 'v0.46', 'v0.45', 'v0.44', 'v0.43', 'v0.42', 'v0.41']:
                     # 先检查日志目录
                     if 'log_dir' in locals():
                         old_config = os.path.join(log_dir, f'backup_config_{old_version}.json')
@@ -1349,7 +1960,7 @@ class MSSQLBackupTool:
                 else:
                     self.log("配置文件中未找到已选备份数据库记录")
             
-            self.log("配置已加载（版本V0.45）")
+            self.log("配置已加载（版本V0.48）")
             
             # 根据配置状态更新自动备份相关UI
             if self.auto_backup_var.get():
@@ -1691,7 +2302,7 @@ class MSSQLBackupTool:
                 return 0, 0
                 
             cutoff_time = datetime.datetime.now() - datetime.timedelta(days=days)
-            self.log(f"开始自动清理本地备份（版本V0.45）：删除 {days} 天前的备份文件")
+            self.log(f"开始自动清理本地备份（版本V0.48）：删除 {days} 天前的备份文件")
             
             prefix = self.filename_prefix_entry.get().strip() or "backup"
             
@@ -2077,6 +2688,12 @@ class MSSQLBackupTool:
         backup_thread.daemon = True
         backup_thread.start()
 
+    def show_about_dialog(self):
+        """显示关于对话框"""
+        # 切换到关于标签页（现在是最后一个标签页）
+        tab_control = self.root.nametowidget(self.root.winfo_children()[0]).nametowidget(self.root.winfo_children()[0].winfo_children()[0])
+        tab_control.select(3)  # 关于标签页现在索引为3（最后一个）
+
 if __name__ == "__main__":
     silent_mode = "--silent" in sys.argv
     
@@ -2086,7 +2703,8 @@ if __name__ == "__main__":
         'schedule': 'schedule',
         'PIL': 'Pillow',
         'matplotlib': 'matplotlib',
-        'pystray': 'pystray'
+        'pystray': 'pystray',
+        'wmi': 'wmi'  # 用于获取硬件信息
     }
     
     missing_libs = []
@@ -2107,3 +2725,4 @@ if __name__ == "__main__":
     root = tk.Tk()
     app = MSSQLBackupTool(root, silent_mode)
     root.mainloop()
+    
