@@ -277,7 +277,7 @@ class ReceiptApp:
         """添加一个空的明细行，数量和单价默认值设置为空"""
         # item_name(0), unit(1), quantity(2), unit_price(3), amount(4), notes(5)
         # 数量和单价为空，金额为 0.00
-        empty_values = ("", "", "", "", "0.00", "") 
+        empty_values = ("", "", "", "", "", "") 
         
         new_item_id = self.items_tree.insert("", "end", values=empty_values)
         self.items_tree.focus(new_item_id)
