@@ -1,0 +1,1 @@
+[2025-10-11 19:27:10] [失败] Realtek Gaming 2.5GbE Family Controller (ID: 1646DFB0...) | 原MAC: 04:7C:16:C7:DD:DE | 新MAC: 06:46:3A:01:57:CF | 错误: 权限不足！请以 **管理员身份** 运行本程序。
