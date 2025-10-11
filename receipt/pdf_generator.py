@@ -9,8 +9,18 @@ class PDFGenerator:
     def __init__(self, receipt_data, items_data):
         self.data = receipt_data
         self.items = items_data
-        self.pdf = FPDF('P', 'mm', 'A4')
         
+        # --- 核心修改: 宽度 170mm，高度 0 (自动适应) ---
+        # 使用字典定义自定义格式，兼容性更佳
+        custom_format = {
+            'w': 170, # 宽度 170mm
+            'h': 0    # 高度 0 表示随内容自动适应 (fpdf2 特性)
+        }
+        self.pdf = FPDF('P', 'mm', custom_format) 
+        
+        # 定义内容区域宽度 (宽度 170 - 左右边距 20*2 = 130mm)
+        self.content_width = 130 
+
         font_path = resource_path('simhei.ttf') 
         self.pdf_font_name = 'SimHei' 
         
@@ -19,7 +29,6 @@ class PDFGenerator:
              self.pdf.add_font(self.pdf_font_name, '', font_path) 
              self.pdf.set_font(self.pdf_font_name, '', 12)
         except FileNotFoundError:
-             # 字体缺失时弹窗提示，并回退
              messagebox.showwarning("字体缺失", "未找到 simhei.ttf，PDF将无法正确显示中文，请将字体文件放在程序目录下。")
              self.pdf.set_font('Arial', '', 12) 
              self.pdf_font_name = 'Arial' 
@@ -27,52 +36,52 @@ class PDFGenerator:
     def generate(self):
         self.pdf.add_page()
         
+        # 设置页边距 (20mm)
+        self.pdf.set_margins(left=20, top=20, right=20) 
+        
         # 标题和编号
         self.pdf.set_font(self.pdf_font_name, '', 18)
-        self.pdf.cell(0, 10, '收 款 收 据', 0, 1, 'C')
+        self.pdf.cell(0, 10, "收  据", 0, 1, 'C') # 居中标题
         
-        self.pdf.set_font(self.pdf_font_name, '', 12)
-        self.pdf.cell(0, 8, f"NO.{self.data['receipt_no']}", 0, 1, 'R')
+        self.pdf.set_font(self.pdf_font_name, '', 11)
+        self.pdf.cell(0, 7, f"NO: {self.data['receipt_no']}", 0, 1, 'R') # 编号靠右
+        
+        self.pdf.ln(5)
 
         # 客户信息
-        self.pdf.cell(0, 8, f"客户名称: {self.data['client_name']}", 0, 1, 'L')
-        self.pdf.ln(2)
-
-        # 表格头
-        col_widths = [40, 20, 20, 20, 30, 60] # mm
-        col_names = ['项目名称', '单位', '数量', '单价', '金额', '备注']
-        self.pdf.set_fill_color(200, 220, 255)
-        self.pdf.set_font(self.pdf_font_name, '', 10)
+        client_name = self.data.get('client_name', ' ')
+        issue_date = self.data.get('issue_date', ' ')
         
-        for i, header in enumerate(col_names):
-            self.pdf.cell(col_widths[i], 8, header, 1, 0, 'C', 1) 
-        self.pdf.ln()
+        self.pdf.set_font(self.pdf_font_name, '', 12)
+        # 宽度分配：左边 80，右边占据剩余 (50)
+        self.pdf.cell(80, 8, f"付款单位/个人: {client_name}", 0, 0, 'L')
+        self.pdf.cell(0, 8, f"日期: {issue_date}", 0, 1, 'R')
+        
+        self.pdf.ln(5)
 
-        # 表格数据
+        # 表格配置：col_widths总和必须等于 self.content_width (130)
+        col_widths = [8, 40, 15, 15, 25, 27] 
+        
+        # 表头
         self.pdf.set_font(self.pdf_font_name, '', 10)
-        for item in self.items:
-            # item 是一个元组/列表，结构为 (item_name, unit, quantity(int), unit_price(float), amount(float), notes)
-            
-            # ！！！ 数量显示为整数 ！！！
-            quantity_display = str(int(item[2])) 
+        self.pdf.set_fill_color(220, 220, 220) # 浅灰色背景
+        headers = ["序号", "项目名称", "单位", "数量", "单价(元)", "金额(元)"]
+        for i, header in enumerate(headers):
+            self.pdf.cell(col_widths[i], 8, header, 1, 0, 'C', 1)
+        self.pdf.ln()
+        
+        # 表格内容
+        items_formatted = [
+            (i + 1, item[0], item[1], f"{item[2]:.2f}", f"{item[3]:.2f}", f"{item[4]:.2f}")
+            for i, item in enumerate(self.items)
+        ]
 
-            row = [
-                item[0] or '', item[1] or '', 
-                quantity_display, f"{item[3]:.2f}", 
-                f"{item[4]:.2f}", item[5] or ''
-            ]
-            
-            # ！！！ 统一设置对齐为居中 (C) ！！！
+        # 表格随内容自适应高度
+        self.pdf.set_font(self.pdf_font_name, '', 10)
+        for row in items_formatted:
             for i, text in enumerate(row):
                 self.pdf.cell(col_widths[i], 8, str(text), 1, 0, 'C') 
             self.pdf.ln()
-            
-        # 填充空白行（保持表格高度一致）
-        if len(self.items) < 3:
-            for _ in range(3 - len(self.items)):
-                for width in col_widths:
-                     self.pdf.cell(width, 8, '', 1, 0, 'C')
-                self.pdf.ln()
 
         # 合计行
         total_text = f"合计: 人民币(大写) {self.data['total_amount_cap']}"
@@ -81,28 +90,29 @@ class PDFGenerator:
         self.pdf.ln(5)
         self.pdf.set_font(self.pdf_font_name, '', 12)
         
-        # 合计信息占据两列
-        self.pdf.cell(100, 8, total_text, 0, 0, 'L')
-        self.pdf.cell(90, 8, total_num_text, 0, 1, 'R')
+        # 合计信息占据两列 (宽度 80 和 剩余)
+        self.pdf.cell(80, 8, total_text, 0, 0, 'L')
+        self.pdf.cell(0, 8, total_num_text, 0, 1, 'R')
         
-        self.pdf.ln(10) # 底部留出更多空间
+        self.pdf.ln(10)
 
-        # 收款人/收款单位 信息
-        payee = self.data.get('payee', '')
-        payee_company = self.data.get('payee_company', '')
-        issue_date = self.data['issue_date']
+        # 底部信息框架
+        payee = self.data.get('payee', ' ')
+        payee_company = self.data.get('payee_company', ' ')
+        issuer = self.data.get('issuer', ' ')
 
-        self.pdf.set_font(self.pdf_font_name, '', 10)
+        # 打印 填票人 和 收款人
+        self.pdf.set_font(self.pdf_font_name, '', 11)
         
-        # ！！！ 调整顺序和对齐：收款人(左对齐), 收款单位(右对齐) ！！！
-        self.pdf.cell(90, 8, f"收款人: {payee}", 0, 0, 'L')
-        self.pdf.cell(90, 8, f"收款单位: {payee_company}", 0, 1, 'R')
+        # 填票人 (宽 50) 和 收款人 (剩余宽度)
+        self.pdf.cell(50, 7, f"填票人: {issuer}", 0, 0, 'L')
+        self.pdf.cell(0, 7, f"收款人: {payee}", 0, 1, 'L') 
+
+        # 收款单位 (独立一行)
+        self.pdf.cell(0, 7, f"收款单位: {payee_company}", 0, 1, 'L')
         
-        # 日期信息
-        self.pdf.ln(5)
-        self.pdf.cell(0, 8, f"开具日期: {issue_date}", 0, 1, 'R')
-
-
-        filename = f"Receipt_{self.data['receipt_no']}.pdf"
-        self.pdf.output(filename)
-        return filename
+        
+    def output(self, filename="receipt.pdf"):
+        """输出 PDF 文件"""
+        self.pdf.output(filename, 'F')
+        return os.path.abspath(filename)
