@@ -9,6 +9,7 @@ import threading
 import queue 
 import time
 import webbrowser 
+import random 
 
 # 导入底层 Windows 模块
 try:
@@ -27,7 +28,29 @@ load_queue = queue.Queue()
 # 用于缓存 GUID 到友好名称的映射
 GUID_TO_NAME_MAP = {} 
 
-# --- 核心逻辑：工具函数 ---
+# --- 核心逻辑：MAC 地址工具函数 ---
+
+def generate_random_mac():
+    """
+    生成一个符合本地管理地址（Locally Administered Address, LAA）规范的随机 MAC 地址。
+    """
+    # 确保第二个十六进制位是 2, 6, A, 或 E，满足 LAA 规范
+    random_bytes = [random.randint(0x00, 0xff) for _ in range(5)]
+    
+    first_byte = random.randint(0x00, 0xFF)
+    laa_marker = random.choice([0x02, 0x06, 0x0A, 0x0E])
+    
+    # 清除第一个字节的低 4 位，然后与 LAA 标记合并
+    first_byte = (first_byte & 0xF0) | laa_marker
+    
+    # 组合为 6 个字节的列表
+    mac_bytes = [first_byte] + random_bytes
+    
+    # 格式化为 AA:BB:CC:DD:EE:FF 字符串
+    return ":".join(f"{b:02X}" for b in mac_bytes)
+
+
+# --- 核心逻辑：工具函数 (保持不变) ---
 
 def get_nic_driver_desc(target_guid):
     """
@@ -143,7 +166,7 @@ def get_network_interfaces_and_mac_threaded():
     load_queue.put((interfaces, error_msg))
 
 
-# --- 核心逻辑：修改 MAC 地址 ---
+# --- 核心逻辑：修改 MAC 地址 (保持不变) ---
 
 def change_mac_address(interface_display_name, new_mac):
     """
@@ -242,7 +265,7 @@ def change_mac_address(interface_display_name, new_mac):
         return False, error_msg, original_mac
 
 
-# --- 日志记录功能 ---
+# --- 日志记录功能 (保持不变) ---
 def save_log(log_entry):
     """将日志条目写入文件"""
     log_file = "mac_change_log.txt"
@@ -257,19 +280,39 @@ def save_log(log_entry):
 
 class MacChangerApp:
     instance = None 
+    
+    def center_window(self, width, height):
+        """计算并设置窗口在屏幕中央的位置"""
+        # 获取屏幕宽度和高度
+        screen_width = self.master.winfo_screenwidth()
+        screen_height = self.master.winfo_screenheight()
+
+        # 计算窗口的 X, Y 坐标
+        x = (screen_width // 2) - (width // 2)
+        y = (screen_height // 2) - (height // 2)
+
+        # 设置窗口位置
+        self.master.geometry(f'{width}x{height}+{x}+{y}')
+
     def __init__(self, master):
         MacChangerApp.instance = self
         self.master = master
-        master.title("MAC 地址修改工具 V7 (增强版)")
-        master.geometry("600x520") # 增加高度以容纳底部信息
+        
+        # 窗口的固定大小
+        WINDOW_WIDTH = 600
+        WINDOW_HEIGHT = 520
+        
+        master.title("MAC 地址修改工具")
         master.resizable(False, False)
+        
+        # 在设置窗口大小和组件之前，先调用 update_idletasks 确保窗口信息就绪
+        master.update_idletasks()
+        self.center_window(WINDOW_WIDTH, WINDOW_HEIGHT)
         
         # --- 1. 设置图标 ---
         try:
-            # 尝试加载 mac.ico 作为窗口图标
             self.master.iconbitmap('mac.ico')
         except Exception:
-            # 如果找不到 mac.ico，则忽略，使用默认图标
             pass
         
         self.current_interfaces = {} 
@@ -283,27 +326,48 @@ class MacChangerApp:
         main_frame = ttk.Frame(master, padding="10")
         main_frame.pack(fill='both', expand=True)
 
+        # ----------------------------------------------------
+        # 1. 网络接口选择
+        # ----------------------------------------------------
         ttk.Label(main_frame, text="选择网络接口:").grid(row=0, column=0, sticky='w', pady=5, padx=5)
         self.interface_var = tk.StringVar()
-        self.interface_combobox = ttk.Combobox(main_frame, textvariable=self.interface_var, state='readonly', width=50)
+        self.interface_combobox = ttk.Combobox(main_frame, textvariable=self.interface_var, state='readonly', width=40)
         self.interface_combobox.grid(row=0, column=1, sticky='ew', pady=5, padx=5)
         self.interface_combobox.bind('<<ComboboxSelected>>', self.on_interface_select)
 
+        # ----------------------------------------------------
+        # 2. 原MAC地址显示
+        # ----------------------------------------------------
         ttk.Label(main_frame, text="原 MAC 地址:").grid(row=1, column=0, sticky='w', pady=5, padx=5)
-        self.original_mac_label = ttk.Label(main_frame, text="N/A", foreground='blue', width=50, cursor="hand2") # 鼠标悬停显示手型
+        self.original_mac_label = ttk.Label(main_frame, text="N/A", foreground='blue', width=40, cursor="hand2") 
         self.original_mac_label.grid(row=1, column=1, sticky='w', pady=5, padx=5)
-        
-        # --- 新增功能：双击复制原MAC地址 ---
         self.original_mac_label.bind("<Double-Button-1>", self.copy_original_mac) 
 
-        ttk.Label(main_frame, text="新的 MAC 地址:").grid(row=2, column=0, sticky='w', pady=5, padx=5)
-        self.mac_entry = ttk.Entry(main_frame, width=50)
-        self.mac_entry.grid(row=2, column=1, sticky='ew', pady=5, padx=5)
-        self.mac_entry.insert(0, "00:11:22:33:44:55")
-
+        # ----------------------------------------------------
+        # 3. 新 MAC 地址输入 & 随机按钮
+        # ----------------------------------------------------
+        ttk.Label(main_frame, text="新 MAC 地址:").grid(row=2, column=0, sticky='w', pady=5, padx=5)
+        
+        mac_input_frame = ttk.Frame(main_frame)
+        mac_input_frame.grid(row=2, column=1, sticky='ew', pady=5, padx=5)
+        mac_input_frame.columnconfigure(0, weight=1) 
+        
+        self.mac_entry = ttk.Entry(mac_input_frame, width=35)
+        self.mac_entry.grid(row=0, column=0, sticky='ew', padx=(0, 5))
+        self.mac_entry.insert(0, generate_random_mac()) 
+        
+        self.random_button = ttk.Button(mac_input_frame, text="随机生成", command=self.on_generate_random_mac)
+        self.random_button.grid(row=0, column=1, sticky='e')
+        
+        # ----------------------------------------------------
+        # 4. 执行按钮
+        # ----------------------------------------------------
         self.change_button = ttk.Button(main_frame, text="执行修改", command=self.on_change_click, state='disabled')
         self.change_button.grid(row=3, column=0, columnspan=2, pady=15)
-
+        
+        # ----------------------------------------------------
+        # 5. 状态和日志
+        # ----------------------------------------------------
         self.status_label = ttk.Label(main_frame, text="程序启动，正在加载网卡信息...", foreground='black')
         self.status_label.grid(row=4, column=0, columnspan=2, pady=5)
         
@@ -316,7 +380,9 @@ class MacChangerApp:
         main_frame.grid_columnconfigure(1, weight=1)
         main_frame.grid_rowconfigure(7, weight=1)
         
-        # --- 底部联系方式和超链接 ---
+        # ----------------------------------------------------
+        # 6. 底部联系方式
+        # ----------------------------------------------------
         contact_frame = ttk.Frame(main_frame, padding="5")
         contact_frame.grid(row=8, column=0, columnspan=2, sticky='ew', pady=(10, 0))
         
@@ -342,12 +408,18 @@ class MacChangerApp:
         mac_address = self.original_mac_label.cget("text")
         
         if mac_address != "N/A":
-            self.master.clipboard_clear() # 清空剪贴板
-            self.master.clipboard_append(mac_address) # 写入新的内容
+            self.master.clipboard_clear() 
+            self.master.clipboard_append(mac_address) 
             self.log_message(f"[信息] 已将 MAC 地址 {mac_address} 复制到剪贴板。")
         else:
             self.log_message("[警告] 剪贴板复制失败：当前没有可用的 MAC 地址。")
 
+    def on_generate_random_mac(self):
+        """点击“生成随机 MAC”按钮"""
+        new_mac = generate_random_mac()
+        self.mac_entry.delete(0, tk.END)
+        self.mac_entry.insert(0, new_mac)
+        self.log_message(f"[信息] 已生成新的随机 MAC 地址：{new_mac}")
 
     def start_load_interfaces(self):
         """在后台线程启动网卡信息加载"""
@@ -455,7 +527,6 @@ if __name__ == "__main__":
          messagebox.showerror("环境错误", "缺少必要的 Python 库 (netifaces) 或 Windows 模块。请确保已安装 netifaces。")
     else:
         root = tk.Tk()
-        # Tkinter 剪贴板操作需要在主窗口上执行
         root.clipboard_clear() 
         app = MacChangerApp(root)
         root.mainloop()
