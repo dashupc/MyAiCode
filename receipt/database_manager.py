@@ -20,6 +20,7 @@ class DatabaseManager:
                 total_amount_cap TEXT NOT NULL
             )
         """)
+        # ReceiptItems 表结构是正确的，包含 notes
         self.cursor.execute("""
             CREATE TABLE IF NOT EXISTS ReceiptItems (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -33,6 +34,7 @@ class DatabaseManager:
                 FOREIGN KEY (receipt_id) REFERENCES Receipts(id)
             )
         """)
+        # Settings 表用于存储默认的 payee, payee_company, 和 issuer
         self.cursor.execute("""
             CREATE TABLE IF NOT EXISTS Settings (
                 key TEXT PRIMARY KEY,
@@ -59,12 +61,12 @@ class DatabaseManager:
                 (receipt_no, receipt_data['client_name'], issue_date, receipt_data['total_amount_num'], receipt_data['total_amount_cap'])
             )
             
-            # --- 错误修复：使用 self.cursor.lastrowid ---
             receipt_id = self.cursor.lastrowid
             
+            # items_data 包含 6 个元素：item_name, unit, quantity, unit_price, amount, notes
             for item in items_data:
-                # item 是一个包含 6 个元素的列表/元组
                 self.cursor.execute(
+                    # 确保 notes (item[5]) 被正确插入
                     "INSERT INTO ReceiptItems (receipt_id, item_name, unit, quantity, unit_price, amount, notes) VALUES (?, ?, ?, ?, ?, ?, ?)",
                     (receipt_id, item[0], item[1], item[2], item[3], item[4], item[5])
                 )
@@ -72,12 +74,11 @@ class DatabaseManager:
             self.conn.commit()
             return receipt_no
         except Exception as e:
-            # 简化错误处理
             print(f"Error saving receipt: {e}")
             return None
 
     def save_setting(self, key, value):
-        """保存设置（如收款人信息）"""
+        """保存设置（如收款人、填票人信息）"""
         self.cursor.execute(
             "INSERT OR REPLACE INTO Settings (key, value) VALUES (?, ?)",
             (key, value)
@@ -85,7 +86,7 @@ class DatabaseManager:
         self.conn.commit()
 
     def load_setting(self, key, default=""):
-        """加载设置（如收款人信息）"""
+        """加载设置（如收款人、填票人信息）"""
         self.cursor.execute("SELECT value FROM Settings WHERE key = ?", (key,))
         result = self.cursor.fetchone()
         return result[0] if result else default
@@ -112,6 +113,7 @@ class DatabaseManager:
         receipt_id, client_name, issue_date, total_amount_num, total_amount_cap = receipt
         
         self.cursor.execute(
+            # 确保 Notes 被选中并返回 (第 6 个字段)
             "SELECT item_name, unit, quantity, unit_price, amount, notes FROM ReceiptItems WHERE receipt_id = ?",
             (receipt_id,)
         )
@@ -120,6 +122,8 @@ class DatabaseManager:
         # 附加最新的收款人设置信息
         payee = self.load_setting("payee", "")
         payee_company = self.load_setting("payee_company", "")
+        # --- 确保加载了填票人设置 ---
+        issuer = self.load_setting("issuer", "") 
         
         return {
             'receipt_no': receipt_no,
@@ -128,7 +132,8 @@ class DatabaseManager:
             'total_amount_num': total_amount_num,
             'total_amount_cap': total_amount_cap,
             'payee': payee,
-            'payee_company': payee_company
+            'payee_company': payee_company,
+            'issuer': issuer  # 返回填票人数据
         }, items
 
     def close(self):

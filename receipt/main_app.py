@@ -5,7 +5,6 @@ import sys
 import webbrowser 
 
 # 从其他文件导入模块 (这些导入必须在 main_app.py 中才能正常工作)
-# 确保 database_manager.py, pdf_generator.py, utils.py 在同一目录下
 from database_manager import DatabaseManager
 from pdf_generator import PDFGenerator
 from utils import resource_path, convert_to_chinese_caps
@@ -101,6 +100,7 @@ class ReceiptApp:
         items_frame = ttk.LabelFrame(self.receipt_frame, text="项目明细 (双击或按Tab键进行输入/跳转)", padding="10")
         items_frame.pack(fill="both", expand=True, pady=10)
         
+        # 6 列：项目名称, 单位, 数量, 单价, 金额, 备注
         columns = ("item_name", "unit", "quantity", "unit_price", "amount", "notes")
         self.items_tree = ttk.Treeview(items_frame, columns=columns, show="headings", height=10)
         
@@ -133,21 +133,27 @@ class ReceiptApp:
         ttk.Label(total_frame, textvariable=self.total_cap_var).pack(side="left", padx=10)
         ttk.Label(total_frame, textvariable=self.total_num_var, font=('Arial', 12, 'bold')).pack(side="right", padx=10)
         
-        # 收款人/收款单位 输入框
+        # --- 关键修改：填票人/收款人/收款单位 全部在一行 ---
         payee_frame = ttk.Frame(self.receipt_frame)
         payee_frame.pack(fill="x", pady=10)
         
-        # 收款人 (左对齐)
-        ttk.Label(payee_frame, text="收款人:").grid(row=0, column=0, padx=5, pady=5, sticky="w")
-        self.payee_entry = ttk.Entry(payee_frame, width=20)
-        self.payee_entry.grid(row=0, column=1, padx=5, pady=5, sticky="w")
+        # 1. 填票人 (左侧)
+        ttk.Label(payee_frame, text="填票人:").grid(row=0, column=0, padx=5, pady=5, sticky="w")
+        self.issuer_entry = ttk.Entry(payee_frame, width=15) # 缩短宽度
+        self.issuer_entry.grid(row=0, column=1, padx=5, pady=5, sticky="w")
         
-        payee_frame.grid_columnconfigure(2, weight=1) # 增加弹性空间
+        # 2. 收款人 (中侧)
+        ttk.Label(payee_frame, text="收款人:").grid(row=0, column=2, padx=20, pady=5, sticky="w")
+        self.payee_entry = ttk.Entry(payee_frame, width=15) # 缩短宽度
+        self.payee_entry.grid(row=0, column=3, padx=5, pady=5, sticky="w")
         
-        # 收款单位 (右对齐)
-        ttk.Label(payee_frame, text="收款单位:").grid(row=0, column=3, padx=5, pady=5, sticky="e")
-        self.payee_company_entry = ttk.Entry(payee_frame, width=30, justify='right') 
-        self.payee_company_entry.grid(row=0, column=4, padx=5, pady=5, sticky="e") 
+        # 3. 收款单位 (右侧，拉伸占据剩余空间)
+        ttk.Label(payee_frame, text="收款单位:").grid(row=0, column=4, padx=20, pady=5, sticky="w")
+        self.payee_company_entry = ttk.Entry(payee_frame, width=10) 
+        self.payee_company_entry.grid(row=0, column=5, padx=5, pady=5, sticky="ew") # 关键：sticky="ew" 允许拉伸
+        
+        # 关键：设置第5列 (收款单位输入框所在的列) 权重为1，使其占据剩余空间
+        payee_frame.grid_columnconfigure(5, weight=1) 
         
         # 主要功能按钮
         main_btn_frame = ttk.Frame(self.receipt_frame)
@@ -160,12 +166,18 @@ class ReceiptApp:
         """从数据库加载并设置默认的收款人信息"""
         payee = self.db.load_setting("payee", "")
         payee_company = self.db.load_setting("payee_company", "")
+        # --- 确保加载了填票人信息 ---
+        issuer = self.db.load_setting("issuer", "")
         
         self.payee_entry.delete(0, tk.END)
         self.payee_entry.insert(0, payee)
         
         self.payee_company_entry.delete(0, tk.END)
         self.payee_company_entry.insert(0, payee_company)
+        
+        # --- 确保设置了填票人输入框的值 ---
+        self.issuer_entry.delete(0, tk.END)
+        self.issuer_entry.insert(0, issuer)
 
     def jump_to_first_item_row(self, event):
         """Tab 键跳转到明细表格"""
@@ -233,38 +245,29 @@ class ReceiptApp:
             values = list(self.items_tree.item(item_id, 'values'))
             
             try:
-                # 检查数量和单价是否为有效数字
                 quantity_str = values[col_map['quantity']].strip()
                 unit_price_str = values[col_map['unit_price']].strip()
                 
-                # 数量优先尝试转整数，否则为 0
                 if quantity_str:
                     try:
                         quantity = int(quantity_str)
                     except ValueError:
-                        # 转换失败，按0处理，等待用户修正
                         quantity = 0 
                 else:
                     quantity = 0
 
-                # 单价接受浮点数
                 unit_price = float(unit_price_str or 0)
                 
                 amount = round(quantity * unit_price, 2)
                 
-                # 更新金额列的值，并累加到总计
                 values[col_map['amount']] = f"{amount:.2f}"
-                
-                # 格式化数量，确保显示的是整数
                 values[col_map['quantity']] = str(quantity) if quantity_str else ""
                 
                 self.items_tree.item(item_id, values=values)
                 
                 total += amount
             except (ValueError, IndexError):
-                # 忽略无效行，并重置金额为 0.00
                 values[col_map['amount']] = "0.00"
-                # 数量和单价保持为空或原样
                 values[col_map['quantity']] = values[col_map['quantity']].strip() or "" 
                 values[col_map['unit_price']] = values[col_map['unit_price']].strip() or "" 
                 self.items_tree.item(item_id, values=values)
@@ -276,7 +279,6 @@ class ReceiptApp:
     def add_item_row(self):
         """添加一个空的明细行，数量和单价默认值设置为空"""
         # item_name(0), unit(1), quantity(2), unit_price(3), amount(4), notes(5)
-        # 数量和单价为空，金额为 0.00
         empty_values = ("", "", "", "", "", "") 
         
         new_item_id = self.items_tree.insert("", "end", values=empty_values)
@@ -300,7 +302,6 @@ class ReceiptApp:
              self.entry_editor.destroy()
              self.entry_editor = None
 
-        # 确定被点击的行和列
         if event and trigger_key != 'Return':
              region = self.items_tree.identify('region', event.x, event.y)
              if region != 'cell': return
@@ -312,7 +313,6 @@ class ReceiptApp:
              item = item_id
              column = column_id
         else:
-             # 处理非点击事件，如Tab键跳转
              item = self.items_tree.focus()
              if event:
                  try:
@@ -323,19 +323,16 @@ class ReceiptApp:
                  column = '#1'
 
         try:
-             # column 格式为 '#1', '#2' 等，需要转换为 0-based 索引
              col_index = int(column.replace('#', '')) - 1
         except ValueError:
              return
 
-        # 检查是否为可编辑列
         if not item or col_index not in self.editable_cols: 
             return
 
         x, y, w, h = self.items_tree.bbox(item, column)
         current_value = self.items_tree.set(item, column)
         
-        # 数量和单价输入框右对齐
         justify_align = 'right' if col_index in (2, 3) else 'left'
         
         self.entry_editor = ttk.Entry(self.items_tree, justify=justify_align)
@@ -356,7 +353,7 @@ class ReceiptApp:
         if not self.entry_editor:
             return
 
-        new_value = self.entry_editor.get().strip() # 移除首尾空白
+        new_value = self.entry_editor.get().strip()
         
         # --- 针对数量和单价的输入检查 ---
         if col_index == 2: # 数量 (quantity) 必须是整数
@@ -386,10 +383,11 @@ class ReceiptApp:
 
         self.entry_editor.destroy()
         self.entry_editor = None
-        self.calculate_total() # 重新计算合计
+        self.calculate_total()
         
         if is_tab:
-            self.master.after(10, lambda: self.handle_tab_jump(item, col_index))
+            # FIX: 使用 lambda 默认参数捕获 col_index 的值，解决 NameError
+            self.master.after(10, lambda c_idx=col_index: self.handle_tab_jump(item, c_idx))
             return "break" 
 
     def handle_tab_jump(self, current_item, current_col_index):
@@ -400,17 +398,14 @@ class ReceiptApp:
             current_editable_index = editable_cols.index(current_col_index)
             
             if current_editable_index < len(editable_cols) - 1:
-                # 移动到同一行下一列
                 next_col_index = editable_cols[current_editable_index + 1]
                 next_column_id = f"#{next_col_index + 1}"
                 next_item = current_item
                 
             else:
-                # 移动到下一行第一列
                 next_item = self.items_tree.next(current_item)
                 
                 if not next_item:
-                    # 如果是最后一行，则添加新行
                     self.add_item_row()
                     return 
                 
@@ -426,7 +421,6 @@ class ReceiptApp:
         
     def save_and_generate(self, generate_pdf=False):
         """保存收据到数据库并可选地生成 PDF"""
-        # 1. 计算总额并验证
         total_num = self.calculate_total() 
         client_name = self.client_name_entry.get().strip()
         
@@ -436,7 +430,6 @@ class ReceiptApp:
             
         # 2. 准备明细数据
         items_raw = [self.items_tree.item(i, 'values') for i in self.items_tree.get_children()]
-        # 过滤掉完全为空的行
         items_raw = [item for item in items_raw if item and any(item)]
         
         if not items_raw:
@@ -454,31 +447,24 @@ class ReceiptApp:
         items_data = []
         for item in items_raw:
             try:
-                # item[4] 是计算出的金额，不需要用户输入
+                # item 列表/元组有 6 个元素 (item_name, unit, quantity, unit_price, amount, notes)
                 
-                # --- 再次验证和转换数据类型 ---
                 quantity_value = item[2] or 0
                 unit_price_value = item[3] or 0
                 
-                # 确保数量是整数 
                 quantity_num = int(float(quantity_value)) if quantity_value else 0
-                
-                # 单价可以接受浮点数
                 unit_price_num = float(unit_price_value) if unit_price_value else 0.0
-                
-                # 最终金额也为浮点数
                 amount_num = float(item[4] or 0)
                 
                 items_data.append([
-                    item[0] or "", # item_name
-                    item[1] or "", # unit
-                    quantity_num, # quantity (整数)
-                    unit_price_num, # unit_price (浮点数)
-                    amount_num, # amount (浮点数)
-                    item[5] or ""  # notes
+                    item[0] or "", # 0: item_name
+                    item[1] or "", # 1: unit
+                    quantity_num,  # 2: quantity (整数)
+                    unit_price_num, # 3: unit_price (浮点数)
+                    amount_num, # 4: amount (浮点数)
+                    item[5] or ""  # 5: notes (备注，确保被获取)
                 ])
             except (ValueError, IndexError) as e:
-                # 捕获如果用户输入了非数字的字符
                 messagebox.showerror("数据错误", f"项目明细中存在无效数据或非整数数量，请检查。错误: {e}")
                 return
 
@@ -486,12 +472,14 @@ class ReceiptApp:
         receipt_no = self.db.save_receipt(receipt_data, items_data)
         
         if receipt_no:
-            # 4. 保存当前的收款人信息作为默认值
+            # 4. 保存当前的收款人/填票人信息作为默认值
             payee_current = self.payee_entry.get().strip()
             payee_company_current = self.payee_company_entry.get().strip()
-            # 保持一致性，先保存收款人，后保存收款单位
+            issuer_current = self.issuer_entry.get().strip() # 获取填票人信息
+            
             self.db.save_setting("payee", payee_current)
             self.db.save_setting("payee_company", payee_company_current)
+            self.db.save_setting("issuer", issuer_current) # 关键修改：保存填票人信息
             
             messagebox.showinfo("成功", f"收据 {receipt_no} 已成功保存到数据库。")
             self.clear_receipt_form()
@@ -658,13 +646,19 @@ class ReceiptApp:
         payee_details_frame = ttk.Frame(main_frame)
         payee_details_frame.pack(fill="x", pady=5)
         
-        # 调整详情窗口的顺序和对齐（与主界面保持一致）
-        ttk.Label(payee_details_frame, text="收款人:", font=('Arial', 10)).grid(row=0, column=0, padx=5, pady=2, sticky="w")
-        ttk.Label(payee_details_frame, text=receipt_data.get('payee', ''), font=('Arial', 10)).grid(row=0, column=1, padx=5, pady=2, sticky="w")
+        # 填票人 
+        ttk.Label(payee_details_frame, text="填票人:", font=('Arial', 10)).grid(row=0, column=0, padx=5, pady=2, sticky="w")
+        ttk.Label(payee_details_frame, text=receipt_data.get('issuer', ''), font=('Arial', 10)).grid(row=0, column=1, padx=5, pady=2, sticky="w")
         
-        ttk.Label(payee_details_frame, text="收款单位:", font=('Arial', 10)).grid(row=0, column=2, padx=20, pady=2, sticky="w")
-        ttk.Label(payee_details_frame, text=receipt_data.get('payee_company', ''), font=('Arial', 10)).grid(row=0, column=3, padx=5, pady=2, sticky="w")
-        payee_details_frame.grid_columnconfigure(4, weight=1)
+        # 收款人
+        ttk.Label(payee_details_frame, text="收款人:", font=('Arial', 10)).grid(row=0, column=2, padx=20, pady=2, sticky="w")
+        ttk.Label(payee_details_frame, text=receipt_data.get('payee', ''), font=('Arial', 10)).grid(row=0, column=3, padx=5, pady=2, sticky="w")
+        
+        # 收款单位 (右侧拉伸)
+        ttk.Label(payee_details_frame, text="收款单位:", font=('Arial', 10)).grid(row=0, column=4, padx=20, pady=2, sticky="w")
+        ttk.Label(payee_details_frame, text=receipt_data.get('payee_company', ''), font=('Arial', 10)).grid(row=0, column=5, padx=5, pady=2, sticky="w")
+        
+        payee_details_frame.grid_columnconfigure(5, weight=1)
         
         # 打印按钮
         action_frame = ttk.Frame(main_frame)
