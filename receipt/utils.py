@@ -1,57 +1,74 @@
 import os
 import sys
 
-# --- 资源路径函数 (解决打包后文件找不到的问题) ---
 def resource_path(relative_path):
-    """获取资源文件的绝对路径，以兼容 PyInstaller 单文件模式"""
+    """获取脚本或打包后的程序目录下的资源文件路径"""
     try:
-        # PyInstaller 在运行时会将所有 --add-data 的文件解压到 _MEIPASS 目录
+        # PyInstaller 临时目录
         base_path = sys._MEIPASS
     except Exception:
-        # 如果不是 PyInstaller 运行，使用当前工作目录
+        # 脚本运行目录
         base_path = os.path.abspath(".")
-    
+
     return os.path.join(base_path, relative_path)
 
-# --- 金额大写转换函数 ---
-def convert_to_chinese_caps(num):
-    """将数字金额转换为中文大写（简化实现）"""
-    num = abs(num) 
-    # 只处理整数部分，因为收据金额通常为整数元加整角分，这里简化为元整
+def convert_to_chinese_caps(number):
+    """将数字金额转换为人民币大写"""
+    num_str = "{:.2f}".format(float(number))
     
-    CAPS = ["零", "壹", "贰", "叁", "肆", "伍", "陆", "柒", "捌", "玖"]
-    UNITS = ["", "拾", "佰", "仟"]
-    GROUPS = ["", "万", "亿"]
+    # 转换逻辑（简化版，您可能需要更完整的实现）：
+    chinese_nums = ['零', '壹', '贰', '叁', '肆', '伍', '陆', '柒', '捌', '玖']
+    units = ['', '拾', '佰', '仟']
+    big_units = ['', '万', '亿']
     
-    # 将金额四舍五入到两位小数，并分离整数部分
-    num_str = f"{num:.2f}"
-    integer_part = num_str.split('.')[0]
+    integer_part, decimal_part = num_str.split('.')
     
-    result = ""
-    group_index = 0
-    
-    while integer_part:
-        chunk = integer_part[-4:]
-        integer_part = integer_part[:-4]
+    def _convert_part(part):
+        output = ''
+        i = 0
+        for num in part[::-1]:
+            n = int(num)
+            if n != 0:
+                output = chinese_nums[n] + units[i % 4] + output
+            elif i % 4 == 0 and output:
+                 output = big_units[i // 4] + output
+            elif output and output[0] != '零':
+                 output = '零' + output
+                 
+            i += 1
         
-        chunk_result = ""
-        # 遍历千、百、十、个
-        for i, char in enumerate(reversed(chunk)):
-            digit = int(char)
-            if digit != 0:
-                chunk_result = CAPS[digit] + UNITS[i] + chunk_result
-            elif chunk_result and not chunk_result.startswith("零"):
-                chunk_result = CAPS[digit] + chunk_result
-        
-        if chunk_result:
-            result = chunk_result.rstrip("零") + GROUPS[group_index] + result
-        
-        group_index += 1
+        # 清理多余的“零”
+        while '零零' in output:
+            output = output.replace('零零', '零')
+        if output.endswith('零'):
+            output = output[:-1]
 
-    # 优化处理连续零和单位
-    result = result.replace("零万", "万").replace("零亿", "亿").strip("零")
-    
-    if not result:
-        return "零元整"
+        # 补全大单位
+        for bu in big_units[1:]:
+             if bu in output and not output.endswith(bu):
+                 output = output.replace(bu, bu + '零')
+
+        return output.replace('零万', '万').replace('零亿', '亿').replace('亿万', '亿')
         
-    return result + "元整"
+    integer_converted = _convert_part(integer_part)
+    
+    # 处理整数部分
+    if integer_converted:
+        result = integer_converted + '元'
+    else:
+        result = '零元'
+        
+    # 处理小数部分
+    jiao = int(decimal_part[0])
+    fen = int(decimal_part[1])
+    
+    if jiao == 0 and fen == 0:
+        result += '整'
+    elif jiao != 0 and fen == 0:
+        result += chinese_nums[jiao] + '角整'
+    elif jiao == 0 and fen != 0:
+        result += '零' + chinese_nums[fen] + '分'
+    else:
+        result += chinese_nums[jiao] + '角' + chinese_nums[fen] + '分'
+        
+    return result

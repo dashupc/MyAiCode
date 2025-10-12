@@ -5,6 +5,7 @@ import sys
 import webbrowser 
 
 # 从其他文件导入模块 (这些导入必须在 main_app.py 中才能正常工作)
+# 确保 database_manager.py, pdf_generator.py, utils.py 存在
 from database_manager import DatabaseManager
 from pdf_generator import PDFGenerator
 from utils import resource_path, convert_to_chinese_caps
@@ -133,7 +134,7 @@ class ReceiptApp:
         ttk.Label(total_frame, textvariable=self.total_cap_var).pack(side="left", padx=10)
         ttk.Label(total_frame, textvariable=self.total_num_var, font=('Arial', 12, 'bold')).pack(side="right", padx=10)
         
-        # --- 关键修改：填票人/收款人/收款单位 全部在一行 ---
+        # --- 填票人/收款人/收款单位 全部在一行 ---
         payee_frame = ttk.Frame(self.receipt_frame)
         payee_frame.pack(fill="x", pady=10)
         
@@ -166,7 +167,6 @@ class ReceiptApp:
         """从数据库加载并设置默认的收款人信息"""
         payee = self.db.load_setting("payee", "")
         payee_company = self.db.load_setting("payee_company", "")
-        # --- 确保加载了填票人信息 ---
         issuer = self.db.load_setting("issuer", "")
         
         self.payee_entry.delete(0, tk.END)
@@ -175,7 +175,6 @@ class ReceiptApp:
         self.payee_company_entry.delete(0, tk.END)
         self.payee_company_entry.insert(0, payee_company)
         
-        # --- 确保设置了填票人输入框的值 ---
         self.issuer_entry.delete(0, tk.END)
         self.issuer_entry.insert(0, issuer)
 
